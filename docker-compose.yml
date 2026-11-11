@@ -1,0 +1,37 @@
+name: picpac
+
+services:
+  api:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATA_DIR: /data
+      JWT_SECRET: ${JWT_SECRET:-}
+      SEED_ON_START: "1"
+      DEMO_SIMULATOR: ${DEMO_SIMULATOR:-1}
+      # Ключи внешних моделей (необязательно; можно ввести и в админке → AI-шлюз)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    volumes:
+      - picpac-data:/data
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${PORT:-8080}:80"
+
+  # Локальные модели на своём сервере: docker compose --profile local-ai up -d
+  # затем: docker compose exec ollama ollama pull qwen3:8b
+  ollama:
+    image: ollama/ollama:0.5.4
+    profiles: ["local-ai"]
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+
+volumes:
+  picpac-data:
+  ollama-models:
