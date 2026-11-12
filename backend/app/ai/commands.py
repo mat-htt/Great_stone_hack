@@ -151,6 +151,51 @@ def validate_plan(raw: Any) -> dict[str, Any]:
     return {"reply": reply or "Готово!", "actions": out}
 
 
+_CUES: dict[str, str] = {  # какие слова в просьбе подтверждают действие
+    "rotate": r"поверн|поворот|разверн|переверн|наклон",
+    "brightness": r"ярк|ярч|светл|темн|тёмн|осветл|затемн|тускл",
+    "contrast": r"контраст",
+    "saturation": r"насыщ|сочн|блекл|бледн|цвет",
+    "temperature": r"тепл|тёпл|холод|прохлад",
+    "auto_enhance": r"улучш|магию|магия|красив|исправ|ретуш",
+    "upscale": r"увелич|разрешени|пиксел|крупн|чётче для печати",
+    "text_clarity": r"чётк|четк|чётч|четч|резк|резч|размыт|смаз",
+    "denoise": r"шум|зерн",
+    "portrait": r"кож|портрет|лиц|ретуш",
+    "restore": r"стар|реставр|царап|выцвет",
+    "remove_bg": r"фон",
+    "style": r"тепл|тёпл|холод|ч/б|чёрно|черно|винтаж|плёнк|пленк|ярк|ярч|сочн|мягк|стил|фильтр",
+    "remove_page": r"убер|удал|выкин|без .*страниц",
+    "add_page": r"добав.*страниц|ещё страниц|новую страниц",
+    "shuffle": r"перемеш|по-другому|другую раскладк",
+    "relayout": r"пересобер|заново|переразлож",
+    "compact": r"компакт|меньше страниц|плотн",
+    "auto_cover": r"облож",
+    "title": r"назов|назван|заголов|название",
+}
+
+
+def ground_plan(plan: dict[str, Any], text: str) -> dict[str, Any]:
+    """Оставляет только действия, которые подтверждаются словами клиента.
+    Небольшие локальные модели иногда добавляют лишнее (например, поворот на «добавь чёткости») —
+    такие действия отбрасываются; пустые и нулевые параметры тоже."""
+    t = (text or "").lower()
+    ok = lambda key: bool(re.search(_CUES.get(key, r"$^"), t))
+    out: list[dict[str, Any]] = []
+    for a in plan.get("actions", []):
+        if a["type"] == "photo_tool" and ok(a["tool"]):
+            out.append(a)
+        elif a["type"] == "adjust":
+            params = {k: v for k, v in a["params"].items() if v and ok(k)}
+            if params:
+                out.append({**a, "params": params})
+        elif a["type"] == "layout" and ok(a["op"]):
+            out.append(a)
+        elif a["type"] == "title" and ok("title"):
+            out.append(a)
+    return {**plan, "actions": out}
+
+
 CAPTIONS_PROMPT = """Ты придумываешь короткие тёплые подписи для фотокниги на русском.
 Дано: название и список страниц с датой и местом съёмки. Верни ТОЛЬКО JSON:
 {"title": "<название книги до 40 символов>", "captions": ["<подпись до 60 символов>", ...]} — по одной на страницу.

@@ -150,7 +150,7 @@ def _llm_text(provider: AIProvider, model: str, tool_id: str, payload: dict[str,
                     "pages": payload.get("pages_count"), "title": payload.get("title"),
                 }, ensure_ascii=False) + "\nПросьба клиента: <<<" + payload.get("text", "")[:600] + ">>>"}]
         raw = providers.extract_json(providers.chat(provider, model, msgs, temperature=0.1))
-        plan = commands.validate_plan(raw)
+        plan = commands.ground_plan(commands.validate_plan(raw), payload.get("text", ""))
         if not plan["actions"] and not plan["reply"]:
             raise providers.ProviderError("empty plan")
         # Страховка для небольших локальных моделей: добавляем действия, которые явно названы в просьбе,
