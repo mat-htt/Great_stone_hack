@@ -141,12 +141,39 @@ def curate(photos: list[Photo], target: int) -> dict[str, Any]:
 
 def auto_layout(product: Product, options: dict[str, Any], photos: list[Photo], title: str = "",
                 seed: Optional[int] = None, per_page: Optional[float] = None) -> dict[str, Any]:
+    layout = _auto_layout(product, options, photos, title, seed, per_page)
+    return fit_faces(layout, product, options, {p.id: p for p in photos})
+
+
+def fit_faces(layout: dict[str, Any], product: Product, options: dict[str, Any], photos: dict[str, Photo]) -> dict[str, Any]:
+    """Кадрирует каждую рамку так, чтобы лица были целиком (слежка за обрезом)."""
+    pw, ph = page_size_cm(product, options)
+    for page in layout.get("pages", []):
+        tpl = TEMPLATES.get(page.get("template"), TEMPLATES["full"])
+        for si, slot in enumerate(page.get("slots", [])):
+            photo = photos.get(slot.get("photo_id") or "")
+            if not photo or not tpl["slots"]:
+                continue
+            x, y, w, h = tpl["slots"][min(si, len(tpl["slots"]) - 1)]
+            slot["crop"] = faces_crop(photo, (w * pw) / max(0.1, h * ph), float(slot.get("crop", {}).get("zoom", 1.0)))
+    return layout
+
+
+def _auto_layout(product: Product, options: dict[str, Any], photos: list[Photo], title: str = "",
+                 seed: Optional[int] = None, per_page: Optional[float] = None) -> dict[str, Any]:
     """Раскладка по разворотам с учётом ориентации, «героев» и ограничений продукта."""
     specs = product.specs or {}
     pg = specs.get("pages") or {}
     if product.kind in ("prints", "wall"):
         pages = [_page("full", [p]) for p in photos] or [_page("full", [])]
         return {"cover": None, "pages": pages, "title": title}
+    if product.kind == "single":
+        best = max(photos, key=lambda p: p.score) if photos else None
+        return {"cover": None, "pages": [_page("full", [best] if best else [])], "title": title}
+    if product.kind == "card":
+        best = max(photos, key=lambda p: p.score) if photos else None
+        return {"cover": None, "title": title,
+                "pages": [_page("full", [best] if best else []), _page("text", [], caption=title or "С праздником!")]}
     if product.kind == "calendar":
         pool = photos[:]
         pages = [_page("full", [pool.pop(0)] if pool else [], caption=MONTHS_NOM[m].capitalize())
@@ -222,6 +249,46 @@ def auto_layout(product: Product, options: dict[str, Any], photos: list[Photo], 
     return {"cover": _slot(cover), "pages": pages[:max_pages], "title": title}
 
 
+def visible_window(photo: Photo, slot_aspect: float, crop: dict[str, Any]) -> tuple[float, float, float, float]:
+    """Видимая часть фото в рамке (доли кадра), как в CSS object-fit: cover + object-position + scale."""
+    pa = photo.width / max(1, photo.height)
+    zoom = max(1.0, float(crop.get("zoom", 1.0)))
+    vw, vh = (slot_aspect / pa, 1.0) if pa > slot_aspect else (1.0, pa / slot_aspect)
+    vw, vh = vw / zoom, vh / zoom
+    cx = vw / 2 + (1 - vw) * float(crop.get("x", 0.5))
+    cy = vh / 2 + (1 - vh) * float(crop.get("y", 0.5))
+    return cx - vw / 2, cy - vh / 2, vw, vh
+
+
+def face_cut(photo: Photo, slot_aspect: float, crop: dict[str, Any]) -> bool:
+    """Слежка за обрезом: True, если какое-то лицо видно меньше чем на 80%."""
+    if not photo.faces:
+        return False
+    x0, y0, vw, vh = visible_window(photo, slot_aspect, crop)
+    for f in photo.faces:
+        fx0, fy0, fx1, fy1 = f["x"], f["y"], f["x"] + f["w"], f["y"] + f["h"]
+        ix = max(0.0, min(fx1, x0 + vw) - max(fx0, x0))
+        iy = max(0.0, min(fy1, y0 + vh) - max(fy0, y0))
+        area = max(1e-6, f["w"] * f["h"])
+        if 0.05 < ix * iy / area < 0.8:
+            return True
+    return False
+
+
+def faces_crop(photo: Photo, slot_aspect: float, zoom: float = 1.0) -> dict[str, float]:
+    """Кадрирование, при котором все лица попадают в рамку (если это возможно)."""
+    if not photo.faces:
+        fx, fy = focus_point(photo)
+        return {"x": fx, "y": fy, "zoom": zoom}
+    x0 = min(f["x"] for f in photo.faces); x1 = max(f["x"] + f["w"] for f in photo.faces)
+    y0 = min(f["y"] for f in photo.faces); y1 = max(f["y"] + f["h"] for f in photo.faces)
+    _, _, vw, vh = visible_window(photo, slot_aspect, {"zoom": zoom, "x": 0.5, "y": 0.5})
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2 - 0.05
+    px = 0.5 if vw >= 1 else min(1.0, max(0.0, (cx - vw / 2) / (1 - vw)))
+    py = 0.5 if vh >= 1 else min(1.0, max(0.0, (cy - vh / 2) / (1 - vh)))
+    return {"x": round(px, 3), "y": round(py, 3), "zoom": zoom}
+
+
 def slot_dpi(photo: Photo, slot_w_cm: float, slot_h_cm: float, zoom: float = 1.0) -> int:
     slot_aspect = slot_w_cm / max(0.1, slot_h_cm)
     photo_aspect = photo.width / max(1, photo.height)
@@ -278,14 +345,21 @@ def preflight(product: Product, options: dict[str, Any], layout: dict[str, Any],
             if not tpl["slots"]:
                 continue
             x, y, w, h = tpl["slots"][min(si, len(tpl["slots"]) - 1)]
-            dpi = slot_dpi(photo, w * pw, h * ph, float(slot.get("crop", {}).get("zoom", 1.0)))
+            crop = slot.get("crop", {}) or {}
+            dpi = slot_dpi(photo, w * pw, h * ph, float(crop.get("zoom", 1.0)))
+            cut = face_cut(photo, w * pw / max(0.1, h * ph), crop)
+            if cut:
+                add("warning", "face_cut", "Лицо попадает под обрез",
+                    "Кадрирование отрезает часть лица. Кот может сдвинуть кадр так, чтобы все лица были целиком.",
+                    page=pi, slot=si, photo_id=pid,
+                    fixes=[{"action": "focus_faces", "label": "Сдвинуть на лица"}, {"action": "ignore", "label": "Оставить"}])
             if dpi < CRITICAL_DPI:
-                add("critical", "low_dpi", "Фото напечатается нечётко",
-                    f"Для рамки {w * pw:.0f}×{h * ph:.0f} см у кадра всего {dpi} dpi (норма — {RECOMMENDED_DPI}). "
-                    f"Будет видна «пикселизация».", page=pi, slot=si, photo_id=pid,
-                    fixes=[{"action": "upscale", "label": "Улучшить AI ×4"},
+                add("warning", "low_dpi", "Фото может напечататься нечётко",
+                    f"Для рамки {w * pw:.0f}×{h * ph:.0f} см у кадра {dpi} dpi при норме {RECOMMENDED_DPI}. "
+                    f"Рекомендую улучшить — но можно заказать и так.", page=pi, slot=si, photo_id=pid,
+                    fixes=[{"action": "upscale", "label": "Увеличить нейросетью"},
                            {"action": "smaller_template", "label": "Поставить меньше"},
-                           {"action": "replace", "label": "Заменить"}], extra={"dpi": dpi})
+                           {"action": "ignore", "label": "Оставить как есть"}], extra={"dpi": dpi, "strong": True})
             elif dpi < WARNING_DPI:
                 add("warning", "low_dpi", "Разрешение ниже нормы",
                     f"{dpi} dpi при норме {RECOMMENDED_DPI}. Скорее всего, будет немного мягко.",

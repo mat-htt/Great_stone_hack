@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import random
 from datetime import datetime, timedelta, timezone
 
@@ -12,6 +13,7 @@ from PIL import Image
 from sqlalchemy.orm import Session
 
 from ..ai.engine import ensure_defaults
+from ..config import CONFIG_DATA
 from ..db import Base, SessionLocal, engine, utcnow
 from ..layout import auto_layout, curate
 from ..models import (AnalyticsEvent, Decision, Order, Product, Project, PromoCode, SupportTicket,
@@ -28,75 +30,9 @@ TEST_ACCOUNTS = [
     ("admin@picpac.test", "admin1234", "admin", "Администратор"),
 ]
 
-PRODUCTS = [
-    dict(id="photobook-premium", title="Фотокнига Премиум", subtitle="Твёрдая обложка · разворот на 180°",
-         category="Фотокниги", kind="book", base_price_minor=6900, production_days=1, badge="Хит", accent="#FFD400",
-         sort=1, description="Плотные страницы, раскрывается полностью — панорамы без «шва». Печать HP Indigo.",
-         specs={"sizes": [{"id": "20x20", "label": "20×20 см", "w_cm": 20, "h_cm": 20, "mult": 1.0},
-                          {"id": "30x30", "label": "30×30 см", "w_cm": 30, "h_cm": 30, "mult": 1.45},
-                          {"id": "30x20", "label": "30×20 см", "w_cm": 30, "h_cm": 20, "mult": 1.25}],
-                "covers": [{"id": "hard", "label": "Твёрдая фото-обложка", "add_minor": 0},
-                           {"id": "fabric", "label": "Ткань + тиснение", "add_minor": 1200},
-                           {"id": "leather", "label": "Экокожа", "add_minor": 1500}],
-                "papers": [{"id": "matte", "label": "Матовая", "add_minor": 0},
-                           {"id": "gloss", "label": "Глянцевая", "add_minor": 0},
-                           {"id": "silk", "label": "Шёлк lay-flat", "add_minor": 900}],
-                "pages": {"min": 20, "max": 80, "step": 2, "included": 20, "extra_spread_minor": 220},
-                "photos": {"min": 10, "max": 240},
-                "requirements": "JPEG/PNG, от 1500 px по короткой стороне для страницы целиком. Рекомендуется 250 dpi."}),
-    dict(id="photobook-lite", title="Фотокнига Лайт", subtitle="Мягкая обложка · быстро и доступно",
-         category="Фотокниги", kind="book", base_price_minor=2900, production_days=1, badge="От 29 BYN",
-         accent="#FFFFFF", sort=2, description="Лёгкая книга для поездки или подарка. Идеальна для первого заказа.",
-         specs={"sizes": [{"id": "15x15", "label": "15×15 см", "w_cm": 15, "h_cm": 15, "mult": 0.8},
-                          {"id": "20x20", "label": "20×20 см", "w_cm": 20, "h_cm": 20, "mult": 1.0}],
-                "covers": [{"id": "soft", "label": "Мягкая обложка", "add_minor": 0}],
-                "papers": [{"id": "matte", "label": "Матовая", "add_minor": 0},
-                           {"id": "gloss", "label": "Глянцевая", "add_minor": 0}],
-                "pages": {"min": 20, "max": 40, "step": 2, "included": 20, "extra_spread_minor": 150},
-                "photos": {"min": 10, "max": 100},
-                "requirements": "JPEG/PNG, от 1200 px по короткой стороне."}),
-    dict(id="graduation", title="Выпускной альбом", subtitle="Общий альбом класса · «Скинемся»",
-         category="Фотокниги", kind="book", base_price_minor=4500, production_days=2, badge="Сезон 2027",
-         accent="#FFD400", sort=3,
-         description="Каждый загружает свои фото по ссылке, Кот собирает общий альбом, счёт делится на всех.",
-         specs={"sizes": [{"id": "21x30", "label": "21×30 см", "w_cm": 21, "h_cm": 30, "mult": 1.0}],
-                "covers": [{"id": "hard", "label": "Твёрдая обложка", "add_minor": 0},
-                           {"id": "leather", "label": "Экокожа + имя", "add_minor": 1800}],
-                "papers": [{"id": "matte", "label": "Матовая", "add_minor": 0}],
-                "pages": {"min": 20, "max": 60, "step": 2, "included": 24, "extra_spread_minor": 200},
-                "photos": {"min": 15, "max": 300}, "shared": True,
-                "requirements": "JPEG/PNG. Портреты — от 1500 px по короткой стороне."}),
-    dict(id="prints", title="Фотопечать", subtitle="Классические отпечатки · от 0,45 BYN",
-         category="Печать", kind="prints", base_price_minor=45, production_days=1, badge="", accent="#FFFFFF", sort=4,
-         description="Настоящая фотобумага, насыщенные цвета. Выберите формат — остальное сделаем мы.",
-         specs={"sizes": [{"id": "10x15", "label": "10×15 см", "w_cm": 15, "h_cm": 10, "mult": 1.0},
-                          {"id": "15x21", "label": "15×21 см", "w_cm": 21, "h_cm": 15, "mult": 2.4},
-                          {"id": "21x30", "label": "21×30 см", "w_cm": 30, "h_cm": 21, "mult": 6.0}],
-                "papers": [{"id": "gloss", "label": "Глянец", "add_minor": 0},
-                           {"id": "matte", "label": "Мат", "add_minor": 0}],
-                "photos": {"min": 1, "max": 400},
-                "requirements": "JPEG/PNG. Для 10×15 — от 1200×1800 px."}),
-    dict(id="canvas", title="Холст на подрамнике", subtitle="Интерьерная печать",
-         category="Интерьер", kind="wall", base_price_minor=4900, production_days=2, badge="", accent="#FFD400", sort=5,
-         description="Хлопковый холст, натуральный подрамник. Кадр, который хочется видеть каждый день.",
-         specs={"sizes": [{"id": "30x40", "label": "30×40 см", "w_cm": 40, "h_cm": 30, "mult": 1.0},
-                          {"id": "40x60", "label": "40×60 см", "w_cm": 60, "h_cm": 40, "mult": 1.6},
-                          {"id": "60x90", "label": "60×90 см", "w_cm": 90, "h_cm": 60, "mult": 2.6}],
-                "photos": {"min": 1, "max": 1},
-                "requirements": "Одно фото. Для 40×60 — от 3500 px по длинной стороне."}),
-    dict(id="calendar", title="Настенный календарь 2027", subtitle="12 месяцев ваших фото",
-         category="Подарки", kind="calendar", base_price_minor=3500, production_days=1, badge="Новинка",
-         accent="#FFFFFF", sort=6, description="Перекидной календарь на пружине. Каждый месяц — новое воспоминание.",
-         specs={"sizes": [{"id": "a4", "label": "A4 (21×30)", "w_cm": 30, "h_cm": 21, "mult": 1.0},
-                          {"id": "a3", "label": "A3 (30×42)", "w_cm": 42, "h_cm": 30, "mult": 1.5}],
-                "photos": {"min": 12, "max": 13},
-                "requirements": "12 фото, горизонтальные смотрятся лучше."}),
-    dict(id="magnets", title="Фотомагниты", subtitle="Набор на холодильник",
-         category="Подарки", kind="prints", base_price_minor=290, production_days=1, badge="", accent="#FFD400", sort=7,
-         description="Плотный винил с магнитной основой.",
-         specs={"sizes": [{"id": "7x10", "label": "7×10 см", "w_cm": 10, "h_cm": 7, "mult": 1.0}],
-                "photos": {"min": 4, "max": 60}, "requirements": "JPEG/PNG, от 800 px."}),
-]
+def load_catalog() -> dict:
+    return json.loads((CONFIG_DATA / "catalog.json").read_text(encoding="utf-8"))
+
 
 PROMOS = [
     ("PICPAC10", "percent", 10, 0, "−10% на первый заказ из приложения"),
@@ -119,9 +55,18 @@ def _season_weight(d: datetime) -> float:
 
 
 def seed_catalog(db: Session) -> None:
-    for p in PRODUCTS:
-        if not db.get(Product, p["id"]):
-            db.add(Product(**p))
+    """Каталог — из config_data/catalog.json. Новые продукты добавляются, описания и характеристики
+    обновляются; цены и активность, изменённые в админке, сохраняются."""
+    cats = {c["id"]: c["name"] for c in load_catalog()["categories"]}
+    for p in load_catalog()["products"]:
+        data = {**p, "category": p["category"], "accent": "", "specs": p.get("specs", {})}
+        cur = db.get(Product, p["id"])
+        if not cur:
+            db.add(Product(**{k: v for k, v in data.items() if k in Product.__table__.columns}))
+        else:
+            for k in ("title", "subtitle", "category", "kind", "mockup", "description", "specs", "badge", "sort"):
+                setattr(cur, k, data.get(k, getattr(cur, k)))
+    _ = cats
     for code, kind, value, min_total, desc in PROMOS:
         if not db.get(PromoCode, code):
             db.add(PromoCode(code=code, kind=kind, value=value, min_total_minor=min_total, description=desc))
@@ -154,8 +99,9 @@ def seed_synthetic(db: Session) -> None:
     db.add_all(customers)
     db.flush()
     products = {p.id: p for p in db.query(Product).all()}
-    weights = {"photobook-premium": 5, "photobook-lite": 4, "graduation": 2, "prints": 4, "canvas": 1.5,
-               "calendar": 1.2, "magnets": 1}
+    weights = {"book-premium": 4, "book-classic": 5, "book-lite": 3, "grad-school-11": 2, "prints-classic": 6,
+               "prints-mini": 3, "mug": 2.5, "postcard": 1.5, "calendar-wall": 1.2, "magnets": 1, "canvas": 1,
+               "poster": 1, "puzzle": 0.6}
     orders: list[Order] = []
     day = now - timedelta(days=430)
     seq = 1000
@@ -265,21 +211,21 @@ def seed_demo_client(db: Session, client: User) -> None:
         photos.append(create_photo(db, client, img, it["file"], source="gallery",
                                    taken_at=datetime.fromisoformat(it["taken_at"]), place=it["place"]))
     db.flush()
-    product = db.get(Product, "photobook-premium")
+    product = db.get(Product, "book-premium")
     sea = [p for p in photos if p.place == "Батуми"]
     picked = curate(sea, 40)["selected"]
     layout = auto_layout(product, {"size": "20x20"}, picked, title="Батуми · Лето 2026")
     draft = Project(owner_id=client.id, product_id=product.id, title="Батуми · Лето 2026",
-                    options={"size": "20x20", "cover": "hard", "paper": "matte"}, layout=layout)
+                    options={"size": "20x20", "cover": "hard", "paper": "photo", "template": "travel"}, layout=layout)
     db.add(draft)
     db.flush()
     for p in sea:
         p.project_id = draft.id
     lake = [p for p in photos if p.place == "Нарочь"]
-    lite = db.get(Product, "photobook-lite")
+    lite = db.get(Product, "book-lite")
     lay2 = auto_layout(lite, {"size": "20x20"}, curate(lake, 30)["selected"], title="Нарочь · Лето 2026")
     ordered = Project(owner_id=client.id, product_id=lite.id, title="Нарочь · Лето 2026", status="ordered",
-                      options={"size": "20x20", "cover": "soft", "paper": "matte"}, layout=lay2)
+                      options={"size": "20x20", "cover": "hard", "paper": "matte", "template": "gallery"}, layout=lay2)
     db.add(ordered)
     db.flush()
     q = quote(db, lite, ordered.options, len(lay2["pages"]), len(lake), 1, "courier", "PICPAC10")

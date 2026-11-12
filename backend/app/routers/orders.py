@@ -16,7 +16,7 @@ from ..layout import preflight
 from ..models import Order, Photo, Product, Project, SupportTicket, TicketMessage, User
 from ..pricing import quote
 from ..security import current_user
-from ..services import add_event, can_access_project, notify, order_public
+from ..services import add_event, can_access_project, notify, order_public, photo_event
 
 router = APIRouter(prefix="/api", tags=["orders"])
 
@@ -27,7 +27,7 @@ class OrderIn(BaseModel):
     delivery_method: str = "pickup"
     delivery_address: str = Field(default="", max_length=300)
     promo_code: Optional[str] = None
-    accept_warnings: bool = False
+    accept_warnings: bool = True  # рекомендации Робота необязательны
     payment_method: str = "test_card"
 
 
@@ -89,6 +89,9 @@ def create_order(body: OrderIn, request: Request, idempotency_key: Optional[str]
         return {**order_public(existing), "replayed": True}
     project.status = "ordered"
     add_event(db, order, "accepted", None, "system")
+    for ph in photos.values():
+        photo_event(db, ph, "ordered", f"В заказе {order.number}", "user", {"order": order.number}, project_id=project.id,
+                    user_id=user.id)
     notify(db, user.id, f"Заказ {order.number} принят", "Я, Робот, уже проверяю файлы. Буду сообщать о каждом этапе.",
            link=f"/orders/{order.id}")
     audit(db, user, "order_create", "order", order.number,

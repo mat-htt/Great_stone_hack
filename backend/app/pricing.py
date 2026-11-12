@@ -59,6 +59,7 @@ def unit_price(product: Product, options: dict[str, Any], pages: int, photos: in
     size = _find(specs.get("sizes", []), options.get("size"))
     cover = _find(specs.get("covers", []), options.get("cover"))
     paper = _find(specs.get("papers", []), options.get("paper"))
+    color = _find(specs.get("colors", []), options.get("color"))
     mult = float(size.get("mult", 1.0))
     lines: list[dict] = []
     if product.kind == "prints":
@@ -76,7 +77,7 @@ def unit_price(product: Product, options: dict[str, Any], pages: int, photos: in
             extra = round((pages - included) / 2 * pg.get("extra_spread_minor", 0) * mult)
             lines.append({"label": f"Доп. страницы: {pages - included}", "amount_minor": extra})
             unit += extra
-    for opt, label in ((cover, "Обложка"), (paper, "Бумага")):
+    for opt, label in ((cover, "Вариант" if product.kind != "book" else "Обложка"), (paper, "Бумага"), (color, "Цвет")):
         add = int(opt.get("add_minor", 0)) if opt else 0
         if add:
             lines.append({"label": f"{label}: {opt['label']}", "amount_minor": add})

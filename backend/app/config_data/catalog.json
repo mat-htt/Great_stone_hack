@@ -1,0 +1,1105 @@
+{
+  "_comment": "Каталог picPac. Цены в копейках BYN. kind: book | prints | single | card | calendar. mockup: как показывать товар (book, prints, mug, poster, canvas, puzzle, magnet, pillow, card, envelope, calendar, tshirt). Синхронизируется с БД при старте; цены и активность можно менять в админке.",
+  "categories": [
+    {
+      "id": "print",
+      "name": "Фотопечать",
+      "emoji": "print"
+    },
+    {
+      "id": "books",
+      "name": "Фотокниги",
+      "emoji": "book"
+    },
+    {
+      "id": "grad",
+      "name": "Выпускные",
+      "emoji": "grad"
+    },
+    {
+      "id": "poly",
+      "name": "Открытки и полиграфия",
+      "emoji": "card"
+    },
+    {
+      "id": "gifts",
+      "name": "Подарки",
+      "emoji": "gift"
+    },
+    {
+      "id": "wall",
+      "name": "Интерьер",
+      "emoji": "wall"
+    }
+  ],
+  "products": [
+    {
+      "id": "prints-classic",
+      "category": "print",
+      "title": "Фотопечать классическая",
+      "subtitle": "Фотохимия, натуральные цвета",
+      "kind": "prints",
+      "mockup": "prints",
+      "base_price_minor": 65,
+      "production_days": 1,
+      "badge": "−50%",
+      "sort": 1,
+      "description": "Фотохимическая печать на фотобумаге: глубокие цвета и долгий срок хранения. Для семейных архивов и рамок.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "10x15",
+            "label": "10×15",
+            "w_cm": 15,
+            "h_cm": 10,
+            "mult": 1.0
+          },
+          {
+            "id": "15x21",
+            "label": "15×21",
+            "w_cm": 21,
+            "h_cm": 15,
+            "mult": 2.6
+          },
+          {
+            "id": "20x30",
+            "label": "20×30",
+            "w_cm": 30,
+            "h_cm": 20,
+            "mult": 5.5
+          }
+        ],
+        "papers": [
+          {
+            "id": "gloss",
+            "label": "Глянец"
+          },
+          {
+            "id": "matte",
+            "label": "Мат"
+          }
+        ],
+        "photos": {
+          "min": 1,
+          "max": 500
+        },
+        "requirements": "От 1200×1800 px для 10×15."
+      }
+    },
+    {
+      "id": "prints-mini",
+      "category": "print",
+      "title": "Мини-снимки",
+      "subtitle": "Цифровая печать, формат полароида",
+      "kind": "prints",
+      "mockup": "prints",
+      "base_price_minor": 49,
+      "production_days": 1,
+      "badge": "",
+      "sort": 2,
+      "description": "Цифровая печать на Ricoh Pro: карточки с белой полоской для подписи — для путешествий и встреч с друзьями.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "7x10",
+            "label": "7,6×10",
+            "w_cm": 7.6,
+            "h_cm": 10,
+            "mult": 1.0
+          },
+          {
+            "id": "10x10",
+            "label": "10×10",
+            "w_cm": 10,
+            "h_cm": 10,
+            "mult": 1.2
+          }
+        ],
+        "photos": {
+          "min": 1,
+          "max": 300
+        },
+        "requirements": "От 900 px по короткой стороне.",
+        "papers": [
+          {
+            "id": "gloss",
+            "label": "Глянец"
+          },
+          {
+            "id": "matte",
+            "label": "Мат"
+          }
+        ]
+      }
+    },
+    {
+      "id": "book-lite",
+      "category": "books",
+      "title": "Фотокнига Lite",
+      "subtitle": "Книжная обложка, журнальные страницы",
+      "kind": "book",
+      "mockup": "book",
+      "base_price_minor": 5600,
+      "production_days": 2,
+      "badge": "Новинка",
+      "sort": 10,
+      "description": "Твёрдая книжная обложка и гибкие журнальные страницы. Подходит, когда фотографий много.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "20x20",
+            "label": "20×20",
+            "w_cm": 20,
+            "h_cm": 20,
+            "mult": 1.0
+          },
+          {
+            "id": "25x25",
+            "label": "25×25",
+            "w_cm": 25,
+            "h_cm": 25,
+            "mult": 1.28
+          }
+        ],
+        "covers": [
+          {
+            "id": "hard",
+            "label": "Книжная"
+          }
+        ],
+        "papers": [
+          {
+            "id": "matte",
+            "label": "Мат"
+          },
+          {
+            "id": "gloss",
+            "label": "Глянец"
+          }
+        ],
+        "pages": {
+          "min": 24,
+          "max": 80,
+          "step": 2,
+          "included": 24,
+          "extra_spread_minor": 150
+        },
+        "photos": {
+          "min": 10,
+          "max": 300
+        },
+        "requirements": "От 1500 px по короткой стороне.",
+        "template": "travel"
+      }
+    },
+    {
+      "id": "book-classic",
+      "category": "books",
+      "title": "Фотокнига Classic",
+      "subtitle": "Плотные страницы, разворот на 180°",
+      "kind": "book",
+      "mockup": "book",
+      "base_price_minor": 7290,
+      "production_days": 3,
+      "badge": "Выбор PicPac",
+      "sort": 11,
+      "description": "Плотные страницы и раскрытие на 180° — панорамы без «шва». Для семейных альбомов и подарков.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "20x20",
+            "label": "20×20",
+            "w_cm": 20,
+            "h_cm": 20,
+            "mult": 1.0
+          },
+          {
+            "id": "21x30",
+            "label": "21×30",
+            "w_cm": 21,
+            "h_cm": 30,
+            "mult": 1.3
+          }
+        ],
+        "covers": [
+          {
+            "id": "hard",
+            "label": "Фотообложка"
+          },
+          {
+            "id": "fabric",
+            "label": "Ткань",
+            "add_minor": 1200
+          }
+        ],
+        "papers": [
+          {
+            "id": "matte",
+            "label": "Мат"
+          },
+          {
+            "id": "gloss",
+            "label": "Глянец"
+          }
+        ],
+        "pages": {
+          "min": 20,
+          "max": 60,
+          "step": 2,
+          "included": 20,
+          "extra_spread_minor": 220
+        },
+        "photos": {
+          "min": 10,
+          "max": 200
+        },
+        "requirements": "От 1500 px по короткой стороне.",
+        "colors": [
+          {
+            "id": "graphite",
+            "label": "Графит",
+            "hex": "#3A3F47"
+          },
+          {
+            "id": "sand",
+            "label": "Песок",
+            "hex": "#D8C3A5"
+          },
+          {
+            "id": "bordo",
+            "label": "Бордо",
+            "hex": "#7A1F2B"
+          },
+          {
+            "id": "sage",
+            "label": "Шалфей",
+            "hex": "#8FA68E"
+          }
+        ],
+        "template": "meadow"
+      }
+    },
+    {
+      "id": "book-premium",
+      "category": "books",
+      "title": "Фотокнига Premium",
+      "subtitle": "Матовая фотобумага, твёрдая обложка",
+      "kind": "book",
+      "mockup": "book",
+      "base_price_minor": 7035,
+      "production_days": 3,
+      "badge": "−30%",
+      "sort": 12,
+      "description": "Фотобумага и плотные развороты. Для свадеб, юбилеев и самых важных событий.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "20x20",
+            "label": "20×20",
+            "w_cm": 20,
+            "h_cm": 20,
+            "mult": 1.0
+          },
+          {
+            "id": "30x30",
+            "label": "30×30",
+            "w_cm": 30,
+            "h_cm": 30,
+            "mult": 1.5
+          },
+          {
+            "id": "21x30",
+            "label": "21×30",
+            "w_cm": 21,
+            "h_cm": 30,
+            "mult": 1.3
+          }
+        ],
+        "covers": [
+          {
+            "id": "hard",
+            "label": "Фотообложка"
+          },
+          {
+            "id": "leather",
+            "label": "Экокожа",
+            "add_minor": 1500
+          }
+        ],
+        "papers": [
+          {
+            "id": "photo",
+            "label": "Фотобумага"
+          },
+          {
+            "id": "silk",
+            "label": "Шёлк",
+            "add_minor": 900
+          }
+        ],
+        "pages": {
+          "min": 20,
+          "max": 60,
+          "step": 2,
+          "included": 20,
+          "extra_spread_minor": 260
+        },
+        "photos": {
+          "min": 10,
+          "max": 200
+        },
+        "requirements": "От 1800 px по короткой стороне.",
+        "colors": [
+          {
+            "id": "cognac",
+            "label": "Коньяк",
+            "hex": "#8B5A2B"
+          },
+          {
+            "id": "black",
+            "label": "Чёрная",
+            "hex": "#1C1C1E"
+          },
+          {
+            "id": "ivory",
+            "label": "Айвори",
+            "hex": "#EDE3D1"
+          }
+        ],
+        "template": "moments"
+      }
+    },
+    {
+      "id": "grad-kindergarten",
+      "category": "grad",
+      "title": "Альбом для детского сада",
+      "subtitle": "Общий альбом группы по ссылке",
+      "kind": "book",
+      "mockup": "book",
+      "base_price_minor": 4500,
+      "production_days": 3,
+      "badge": "Скинемся",
+      "sort": 20,
+      "description": "Каждый родитель загружает фото по ссылке, Кот собирает общий альбом группы.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "21x30",
+            "label": "21×30",
+            "w_cm": 21,
+            "h_cm": 30,
+            "mult": 1.0
+          }
+        ],
+        "covers": [
+          {
+            "id": "hard",
+            "label": "Твёрдая"
+          }
+        ],
+        "pages": {
+          "min": 20,
+          "max": 40,
+          "step": 2,
+          "included": 20,
+          "extra_spread_minor": 180
+        },
+        "photos": {
+          "min": 10,
+          "max": 300
+        },
+        "shared": true,
+        "template": "kindergarten"
+      }
+    },
+    {
+      "id": "grad-school-4",
+      "category": "grad",
+      "title": "Выпускной 4 класс",
+      "subtitle": "Начальная школа",
+      "kind": "book",
+      "mockup": "book",
+      "base_price_minor": 4900,
+      "production_days": 3,
+      "badge": "Скинемся",
+      "sort": 21,
+      "description": "Альбом выпуска начальной школы: портреты, класс, учителя.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "21x30",
+            "label": "21×30",
+            "w_cm": 21,
+            "h_cm": 30,
+            "mult": 1.0
+          }
+        ],
+        "covers": [
+          {
+            "id": "hard",
+            "label": "Твёрдая"
+          }
+        ],
+        "pages": {
+          "min": 20,
+          "max": 40,
+          "step": 2,
+          "included": 20,
+          "extra_spread_minor": 180
+        },
+        "photos": {
+          "min": 10,
+          "max": 300
+        },
+        "shared": true,
+        "template": "magic"
+      }
+    },
+    {
+      "id": "grad-school-11",
+      "category": "grad",
+      "title": "Выпускной 9 и 11 класс",
+      "subtitle": "Премиальный альбом выпуска",
+      "kind": "book",
+      "mockup": "book",
+      "base_price_minor": 6500,
+      "production_days": 3,
+      "badge": "Скинемся",
+      "sort": 22,
+      "description": "Экокожа с именем, портреты, общие фото — счёт можно разделить на весь класс.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "21x30",
+            "label": "21×30",
+            "w_cm": 21,
+            "h_cm": 30,
+            "mult": 1.0
+          }
+        ],
+        "covers": [
+          {
+            "id": "hard",
+            "label": "Твёрдая"
+          },
+          {
+            "id": "leather",
+            "label": "Экокожа + имя",
+            "add_minor": 1800
+          }
+        ],
+        "pages": {
+          "min": 24,
+          "max": 60,
+          "step": 2,
+          "included": 24,
+          "extra_spread_minor": 200
+        },
+        "photos": {
+          "min": 15,
+          "max": 400
+        },
+        "shared": true,
+        "template": "grad-neon"
+      }
+    },
+    {
+      "id": "postcard",
+      "category": "poly",
+      "title": "Открытка",
+      "subtitle": "Двусторонняя, с вашим текстом",
+      "kind": "card",
+      "mockup": "card",
+      "base_price_minor": 250,
+      "production_days": 1,
+      "badge": "",
+      "sort": 30,
+      "description": "Фото на лицевой стороне, текст на обороте. Для праздников и путешествий.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "10x15",
+            "label": "10×15",
+            "w_cm": 15,
+            "h_cm": 10,
+            "mult": 1.0
+          },
+          {
+            "id": "15x15",
+            "label": "15×15",
+            "w_cm": 15,
+            "h_cm": 15,
+            "mult": 1.3
+          }
+        ],
+        "papers": [
+          {
+            "id": "matte",
+            "label": "Дизайнерский картон"
+          },
+          {
+            "id": "gloss",
+            "label": "Глянцевый картон"
+          }
+        ],
+        "photos": {
+          "min": 1,
+          "max": 1
+        },
+        "template": "retro-stamp"
+      }
+    },
+    {
+      "id": "invitation",
+      "category": "poly",
+      "title": "Приглашения",
+      "subtitle": "Свадьба, день рождения, выпускной",
+      "kind": "card",
+      "mockup": "card",
+      "base_price_minor": 290,
+      "production_days": 2,
+      "badge": "",
+      "sort": 31,
+      "description": "Тираж приглашений с фото и текстом. Шаблоны под повод.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "10x15",
+            "label": "10×15",
+            "w_cm": 15,
+            "h_cm": 10,
+            "mult": 1.0
+          }
+        ],
+        "photos": {
+          "min": 1,
+          "max": 1
+        },
+        "template": "wedding-eucalyptus",
+        "papers": [
+          {
+            "id": "matte",
+            "label": "Дизайнерский картон"
+          },
+          {
+            "id": "gloss",
+            "label": "Глянцевый картон"
+          }
+        ]
+      }
+    },
+    {
+      "id": "envelope",
+      "category": "poly",
+      "title": "Фотоконверт",
+      "subtitle": "Конверт с вашим фото для подарка",
+      "kind": "single",
+      "mockup": "envelope",
+      "base_price_minor": 390,
+      "production_days": 2,
+      "badge": "",
+      "sort": 32,
+      "description": "Конверт для денег или открытки с персональной фотографией.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "16x23",
+            "label": "16×23",
+            "w_cm": 23,
+            "h_cm": 16,
+            "mult": 1.0
+          }
+        ],
+        "photos": {
+          "min": 1,
+          "max": 1
+        }
+      }
+    },
+    {
+      "id": "calendar-wall",
+      "category": "poly",
+      "title": "Календарь настенный 2027",
+      "subtitle": "12 месяцев ваших фото",
+      "kind": "calendar",
+      "mockup": "calendar",
+      "base_price_minor": 3500,
+      "production_days": 2,
+      "badge": "",
+      "sort": 33,
+      "description": "Перекидной календарь на пружине. Каждый месяц — новое воспоминание.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "a4",
+            "label": "A4",
+            "w_cm": 30,
+            "h_cm": 21,
+            "mult": 1.0
+          },
+          {
+            "id": "a3",
+            "label": "A3",
+            "w_cm": 42,
+            "h_cm": 30,
+            "mult": 1.5
+          }
+        ],
+        "photos": {
+          "min": 12,
+          "max": 13
+        },
+        "colors": [
+          {
+            "id": "white",
+            "label": "Белая пружина",
+            "hex": "#F1F3F5"
+          },
+          {
+            "id": "black",
+            "label": "Чёрная пружина",
+            "hex": "#212529"
+          },
+          {
+            "id": "gold",
+            "label": "Золотая пружина",
+            "hex": "#D4AF37",
+            "add_minor": 200
+          }
+        ],
+        "papers": [
+          {
+            "id": "gloss",
+            "label": "Глянец"
+          },
+          {
+            "id": "matte",
+            "label": "Мат"
+          }
+        ],
+        "template": "happy-new-year"
+      }
+    },
+    {
+      "id": "calendar-desk",
+      "category": "poly",
+      "title": "Календарь-домик",
+      "subtitle": "Настольный, 12 листов",
+      "kind": "calendar",
+      "mockup": "calendar",
+      "base_price_minor": 2200,
+      "production_days": 2,
+      "badge": "",
+      "sort": 34,
+      "description": "Компактный настольный календарь для рабочего стола.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "10x15",
+            "label": "10×15",
+            "w_cm": 15,
+            "h_cm": 10,
+            "mult": 1.0
+          }
+        ],
+        "photos": {
+          "min": 12,
+          "max": 13
+        },
+        "colors": [
+          {
+            "id": "white",
+            "label": "Белая пружина",
+            "hex": "#F1F3F5"
+          },
+          {
+            "id": "black",
+            "label": "Чёрная пружина",
+            "hex": "#212529"
+          },
+          {
+            "id": "gold",
+            "label": "Золотая пружина",
+            "hex": "#D4AF37",
+            "add_minor": 200
+          }
+        ],
+        "papers": [
+          {
+            "id": "gloss",
+            "label": "Глянец"
+          },
+          {
+            "id": "matte",
+            "label": "Мат"
+          }
+        ],
+        "template": "for-mom"
+      }
+    },
+    {
+      "id": "mug",
+      "category": "gifts",
+      "title": "Кружка с фото",
+      "subtitle": "Керамика 330 мл, цветная ручка",
+      "kind": "single",
+      "mockup": "mug",
+      "base_price_minor": 1900,
+      "production_days": 2,
+      "badge": "Хит",
+      "sort": 40,
+      "description": "Сублимационная печать по кругу, не смывается в посудомойке.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "330",
+            "label": "330 мл",
+            "w_cm": 20,
+            "h_cm": 8.5,
+            "mult": 1.0
+          }
+        ],
+        "covers": [
+          {
+            "id": "white",
+            "label": "Белая"
+          },
+          {
+            "id": "chameleon",
+            "label": "Хамелеон",
+            "add_minor": 800
+          }
+        ],
+        "photos": {
+          "min": 1,
+          "max": 1
+        },
+        "colors": [
+          {
+            "id": "white",
+            "label": "Белая",
+            "hex": "#FFFFFF"
+          },
+          {
+            "id": "pink",
+            "label": "Розовая внутри",
+            "hex": "#F48FB1",
+            "add_minor": 300
+          },
+          {
+            "id": "yellow",
+            "label": "Жёлтая внутри",
+            "hex": "#FFD43B",
+            "add_minor": 300
+          },
+          {
+            "id": "sky",
+            "label": "Голубая внутри",
+            "hex": "#74C0FC",
+            "add_minor": 300
+          },
+          {
+            "id": "mint",
+            "label": "Мятная внутри",
+            "hex": "#8CE99A",
+            "add_minor": 300
+          },
+          {
+            "id": "black",
+            "label": "Чёрная внутри",
+            "hex": "#212529",
+            "add_minor": 300
+          }
+        ]
+      }
+    },
+    {
+      "id": "magnets",
+      "category": "gifts",
+      "title": "Фотомагниты",
+      "subtitle": "Набор на холодильник",
+      "kind": "prints",
+      "mockup": "magnet",
+      "base_price_minor": 290,
+      "production_days": 1,
+      "badge": "",
+      "sort": 41,
+      "description": "Плотный винил на магнитной основе.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "7x10",
+            "label": "7×10",
+            "w_cm": 10,
+            "h_cm": 7,
+            "mult": 1.0
+          }
+        ],
+        "photos": {
+          "min": 4,
+          "max": 60
+        },
+        "papers": [
+          {
+            "id": "gloss",
+            "label": "Глянец"
+          },
+          {
+            "id": "matte",
+            "label": "Мат"
+          }
+        ]
+      }
+    },
+    {
+      "id": "puzzle",
+      "category": "gifts",
+      "title": "Пазл с фото",
+      "subtitle": "120 или 252 элемента",
+      "kind": "single",
+      "mockup": "puzzle",
+      "base_price_minor": 2400,
+      "production_days": 3,
+      "badge": "",
+      "sort": 42,
+      "description": "Картонный пазл в коробке с вашей фотографией на крышке.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "a4",
+            "label": "A4 · 120",
+            "w_cm": 30,
+            "h_cm": 21,
+            "mult": 1.0
+          },
+          {
+            "id": "a3",
+            "label": "A3 · 252",
+            "w_cm": 42,
+            "h_cm": 30,
+            "mult": 1.5
+          }
+        ],
+        "photos": {
+          "min": 1,
+          "max": 1
+        }
+      }
+    },
+    {
+      "id": "pillow",
+      "category": "gifts",
+      "title": "Подушка с фото",
+      "subtitle": "40×40, съёмная наволочка",
+      "kind": "single",
+      "mockup": "pillow",
+      "base_price_minor": 3900,
+      "production_days": 3,
+      "badge": "",
+      "sort": 43,
+      "description": "Мягкая подушка с полноцветной печатью.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "40x40",
+            "label": "40×40",
+            "w_cm": 40,
+            "h_cm": 40,
+            "mult": 1.0
+          }
+        ],
+        "photos": {
+          "min": 1,
+          "max": 1
+        },
+        "covers": [
+          {
+            "id": "satin",
+            "label": "Атлас (блестит)"
+          },
+          {
+            "id": "gabardine",
+            "label": "Габардин (мат)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tshirt",
+      "category": "gifts",
+      "title": "Футболка с принтом",
+      "subtitle": "Хлопок, размеры S–XXL",
+      "kind": "single",
+      "mockup": "tshirt",
+      "base_price_minor": 3500,
+      "production_days": 3,
+      "badge": "",
+      "sort": 44,
+      "description": "Печать фото на груди футболки.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "m",
+            "label": "M",
+            "w_cm": 28,
+            "h_cm": 35,
+            "mult": 1.0
+          },
+          {
+            "id": "l",
+            "label": "L",
+            "w_cm": 30,
+            "h_cm": 37,
+            "mult": 1.0
+          },
+          {
+            "id": "xl",
+            "label": "XL",
+            "w_cm": 32,
+            "h_cm": 39,
+            "mult": 1.05
+          }
+        ],
+        "photos": {
+          "min": 1,
+          "max": 1
+        },
+        "colors": [
+          {
+            "id": "white",
+            "label": "Белая",
+            "hex": "#F8F9FA"
+          },
+          {
+            "id": "black",
+            "label": "Чёрная",
+            "hex": "#1E1E22",
+            "add_minor": 300
+          },
+          {
+            "id": "grey",
+            "label": "Серый меланж",
+            "hex": "#ADB5BD",
+            "add_minor": 200
+          },
+          {
+            "id": "pink",
+            "label": "Пудровая",
+            "hex": "#F3C4CF",
+            "add_minor": 200
+          }
+        ]
+      }
+    },
+    {
+      "id": "poster",
+      "category": "wall",
+      "title": "Постер",
+      "subtitle": "Фотобумага, A3–A1",
+      "kind": "single",
+      "mockup": "poster",
+      "base_price_minor": 1500,
+      "production_days": 1,
+      "badge": "",
+      "sort": 50,
+      "description": "Интерьерный постер на плотной фотобумаге.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "a3",
+            "label": "A3",
+            "w_cm": 30,
+            "h_cm": 42,
+            "mult": 1.0
+          },
+          {
+            "id": "a2",
+            "label": "A2",
+            "w_cm": 42,
+            "h_cm": 59,
+            "mult": 1.8
+          },
+          {
+            "id": "a1",
+            "label": "A1",
+            "w_cm": 59,
+            "h_cm": 84,
+            "mult": 3.0
+          }
+        ],
+        "photos": {
+          "min": 1,
+          "max": 1
+        },
+        "papers": [
+          {
+            "id": "matte",
+            "label": "Мат"
+          },
+          {
+            "id": "gloss",
+            "label": "Глянец"
+          },
+          {
+            "id": "satin",
+            "label": "Сатин",
+            "add_minor": 300
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvas",
+      "category": "wall",
+      "title": "Холст на подрамнике",
+      "subtitle": "Хлопок, натуральное дерево",
+      "kind": "single",
+      "mockup": "canvas",
+      "base_price_minor": 4900,
+      "production_days": 2,
+      "badge": "",
+      "sort": 51,
+      "description": "Кадр, который хочется видеть каждый день.",
+      "specs": {
+        "sizes": [
+          {
+            "id": "30x40",
+            "label": "30×40",
+            "w_cm": 40,
+            "h_cm": 30,
+            "mult": 1.0
+          },
+          {
+            "id": "40x60",
+            "label": "40×60",
+            "w_cm": 60,
+            "h_cm": 40,
+            "mult": 1.6
+          },
+          {
+            "id": "60x90",
+            "label": "60×90",
+            "w_cm": 90,
+            "h_cm": 60,
+            "mult": 2.6
+          }
+        ],
+        "photos": {
+          "min": 1,
+          "max": 1
+        },
+        "covers": [
+          {
+            "id": "d2",
+            "label": "Подрамник 2 см"
+          },
+          {
+            "id": "d4",
+            "label": "Подрамник 4 см",
+            "add_minor": 900
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -17,6 +17,7 @@ router = APIRouter(prefix="/api", tags=["catalog"])
 def product_public(p: Product) -> dict:
     q_pages = (p.specs.get("pages") or {}).get("included", 0)
     return {"id": p.id, "title": p.title, "subtitle": p.subtitle, "category": p.category, "kind": p.kind,
+            "mockup": p.mockup,
             "description": p.description, "base_price_minor": p.base_price_minor, "currency": p.currency,
             "production_days": p.production_days, "specs": p.specs, "badge": p.badge, "accent": p.accent,
             "from_price_minor": p.base_price_minor * (1 if p.kind != "prints" else 1),
@@ -26,7 +27,8 @@ def product_public(p: Product) -> dict:
 @router.get("/catalog")
 def catalog(db: Session = Depends(get_db)):
     items = db.query(Product).filter_by(active=True).order_by(Product.sort).all()
-    return {"items": [product_public(p) for p in items],
+    from ..seed.seed import load_catalog
+    return {"items": [product_public(p) for p in items], "categories": load_catalog()["categories"],
             "delivery": [{"id": k, **v} for k, v in DELIVERY.items()]}
 
 

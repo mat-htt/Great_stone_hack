@@ -58,7 +58,7 @@ def builtin_plan(text: str, has_selection: bool) -> dict[str, Any]:
         tool("style", "сделаю цвета сочнее", {"style": "vivid"})
     if re.search(r"улучш|магия|красив|исправ", t):
         tool("auto_enhance", "поработаю со светом и цветом")
-    if re.search(r"резч|четч|резкост|размыт|текст", t):
+    if re.search(r"резч|четч|четк|резкост|размыт|текст", t):
         tool("text_clarity", "добавлю чёткости")
     if re.search(r"шум|зерн", t) and "без" not in t[:3]:
         tool("denoise", "уберу шум")

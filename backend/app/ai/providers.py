@@ -59,8 +59,11 @@ def chat(p: AIProvider, model: str, messages: list[dict[str, Any]], temperature:
     if not p.base_url:
         raise ProviderError("У провайдера не указан base_url")
     url = p.base_url.rstrip("/") + "/chat/completions"
-    body = {"model": model or p.default_model, "messages": messages, "temperature": temperature,
-            "max_tokens": max_tokens}
+    model = model or p.default_model
+    if model.lower().startswith("qwen3") and messages and messages[-1]["role"] == "user":
+        # Qwen3: отключаем режим размышлений — ответ в 3–5 раз быстрее на CPU
+        messages = messages[:-1] + [{**messages[-1], "content": messages[-1]["content"] + " /no_think"}]
+    body = {"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
     try:
         r = httpx.post(url, json=body, headers=_headers(p), timeout=TIMEOUT)
     except httpx.HTTPError as e:
@@ -116,7 +119,7 @@ def ping(p: AIProvider) -> dict[str, Any]:
             r = httpx.get(p.base_url.rstrip("/") + "/models", headers=_headers(p), timeout=httpx.Timeout(8.0))
             if r.status_code >= 400:
                 return {"ok": False, "message": f"Ответ {r.status_code}: {r.text[:120]}"}
-            models = [m.get("id") for m in r.json().get("data", [])][:30]
+            models = [m.get("id") for m in (r.json().get("data") or [])][:30]
             return {"ok": True, "message": f"Доступно моделей: {len(models)}", "models": models}
         r = httpx.get(p.base_url.rstrip("/") + "/health", headers=_headers(p), timeout=httpx.Timeout(8.0))
         return {"ok": r.status_code < 400, "message": f"Ответ {r.status_code}", "models": []}

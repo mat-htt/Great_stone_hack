@@ -47,12 +47,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshNotifications = useCallback(() => {
     if (!tokenStore.get()) return
-    api<{ unread: number; items: any[] }>(`/api/notifications?since_id=${Math.max(0, lastId.current)}`).then((r) => {
+    const since = lastId.current
+    api<{ unread: number; items: any[] }>(`/api/notifications?since_id=${Math.max(0, since)}`).then((r) => {
       setUnread(r.unread)
       if (r.items.length) {
         const maxId = Math.max(...r.items.map((i) => i.id))
-        if (lastId.current >= 0) {
-          r.items.slice(0, 2).reverse().forEach((n) => {
+        // тостим только новое: первый запрос (since < 0) лишь запоминает, что уже было; параллельный ответ не дублирует
+        if (since >= 0 && lastId.current >= 0) {
+          r.items.filter((n) => n.id > lastId.current).slice(0, 2).reverse().forEach((n) => {
             toast({ title: n.title, body: n.body, mascot: n.mascot, link: n.link })
             try { if ('Notification' in window && Notification.permission === 'granted' && document.hidden) new Notification(n.title, { body: n.body, icon: '/icon-192.png' }) } catch { /* noop */ }
           })
@@ -81,7 +83,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
   return (
     <AppCtx.Provider value={value}>
-      {!online && <div className="banner-offline" role="status">Нет сети — работаем офлайн, изменения сохранятся на телефоне</div>}
+      {!online && <div className="offline" role="status">Нет сети — работаем офлайн, изменения сохранятся на телефоне</div>}
       {children}
       <div className="toasts" aria-live="polite">
         <AnimatePresence>
@@ -89,8 +91,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             <motion.div key={t.id} className={`toast ${t.kind === 'bad' ? 'bad' : ''}`} initial={{ y: -30, opacity: 0, scale: 0.96 }}
               animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ y: -20, opacity: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 32 }}
               onClick={() => { if (t.link) window.location.assign(t.link) }}>
-              {t.mascot === 'cat' ? <Cat size={36} /> : t.mascot === 'robot' ? <Robot size={36} /> : null}
-              <div className="grow"><div className="t-title">{t.title}</div>{t.body && <div className="t-body">{t.body}</div>}</div>
+              {t.mascot === 'cat' ? <Cat size={40} /> : t.mascot === 'robot' ? <Robot size={40} /> : null}
+              <div className="grow"><div className="tt">{t.title}</div>{t.body && <div className="tb">{t.body}</div>}</div>
             </motion.div>
           ))}
         </AnimatePresence>

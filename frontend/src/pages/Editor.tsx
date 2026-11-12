@@ -1,691 +1,551 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { closestCenter, DndContext, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { arrayMove, horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  ArrowLeft, ChevronLeft, ChevronRight, Cloud, CloudOff, Copy, Crop, Droplets, Expand, Focus, Frame, History, ImagePlus, LayoutGrid,
-  Loader2, Mic, Palette, Plus, Quote, RefreshCw, Replace, ScanFace, Scissors, Send, Share2, Shuffle, SlidersHorizontal, Sparkles, Stars,
-  Trash2, Undo2, Users, Wand2,
+  Box, ChevronLeft, ChevronRight, Crop, X, Droplets, Expand, Focus, Frame, History, ImagePlus, LayoutTemplate, Loader2, Mic, Palette,
+  Plus, Quote, RotateCw, ScanFace, Scissors, Send, Share2, Shuffle, SlidersHorizontal, Sparkles, Stars, Trash2, Undo2, Users, Wand2, Copy, Replace,
 } from 'lucide-react'
 import { api, ApiError, media, track, type AiTool, type Layout, type Page, type Photo, type Preflight, type Project } from '../api'
-import { Cat, Robot } from '../components/Mascots'
-import { BeforeAfter, Img, PageView, Sheet, TEMPLATES, aspectOf } from '../components/ui'
+import { Avatar, MASCOT } from '../components/Mascots'
+import { Mockup } from '../components/Mockup'
+import View3D from '../components/View3D'
+import { aspectOf, BeforeAfter, byOccasion, DesignCard, OCCASIONS, PageView, Sheet, TEMPLATES, useDesigns, type Design } from '../components/ui'
 import { errorText, getLocal, pushDraft, saveLocal, useApp } from '../store'
 
-const ICONS: Record<string, any> = {
-  wand: Wand2, expand: Expand, focus: Focus, drop: Droplets, face: ScanFace, history: History, scissors: Scissors, palette: Palette,
-  frame: Frame, sliders: SlidersHorizontal, stars: Stars,
-}
-const STYLES = [
-  { id: 'film', label: 'Плёнка' }, { id: 'warm', label: 'Тёплый' }, { id: 'cool', label: 'Холодный' }, { id: 'bw', label: 'Ч/Б' },
-  { id: 'vintage', label: 'Винтаж' }, { id: 'vivid', label: 'Сочный' }, { id: 'soft', label: 'Мягкий' },
+const ICON: Record<string, any> = { wand: Wand2, expand: Expand, focus: Focus, drop: Droplets, face: ScanFace, history: History, scissors: Scissors, palette: Palette, frame: Frame, sliders: SlidersHorizontal, stars: Stars }
+const FILTERS: { id: string; label: string; css: string }[] = [
+  { id: 'none', label: 'Оригинал', css: 'none' }, { id: 'film', label: 'Плёнка', css: 'sepia(.15) contrast(.95) saturate(.9) brightness(1.03)' },
+  { id: 'warm', label: 'Тёплый', css: 'sepia(.25) saturate(1.15) hue-rotate(-8deg)' }, { id: 'cool', label: 'Холодный', css: 'saturate(.95) hue-rotate(12deg) brightness(1.02)' },
+  { id: 'vivid', label: 'Сочный', css: 'saturate(1.45) contrast(1.08)' }, { id: 'bw', label: 'Ч/Б', css: 'grayscale(1) contrast(1.1)' },
+  { id: 'vintage', label: 'Винтаж', css: 'sepia(.5) contrast(.9) brightness(1.05)' }, { id: 'soft', label: 'Мягкий', css: 'brightness(1.06) contrast(.9) saturate(.95)' },
 ]
+const SUGGEST = ['Сделай всё теплее', 'Добавь чёткости', 'Перемешай страницы', 'Подбери обложку', 'Убери 2-ю страницу']
+type Tab = 'layout' | 'filters' | 'enhance' | 'crop'
 type Sel = { page: number; slot: number } | null
-type SaveState = 'saved' | 'saving' | 'offline' | 'error'
-interface ChatMsg { from: 'me' | 'cat'; text: string; pending?: boolean }
+type Save = 'saved' | 'saving' | 'offline' | 'error'
 
 export default function Editor() {
   const { id } = useParams()
   const [params] = useSearchParams()
   const nav = useNavigate()
   const { toast, user } = useApp()
+  const designs = useDesigns()
   const [project, setProject] = useState<Project | null>(null)
   const [layout, setLayout] = useState<Layout | null>(null)
   const [title, setTitle] = useState('')
   const [revision, setRevision] = useState(0)
-  const [spread, setSpread] = useState(-1) // -1 = обложка
+  const [cell, setCell] = useState(0)
   const [sel, setSel] = useState<Sel>(null)
-  const [save, setSave] = useState<SaveState>('saved')
+  const [tab, setTab] = useState<Tab>('layout')
+  const [save, setSave] = useState<Save>('saved')
   const [tools, setTools] = useState<AiTool[]>([])
-  const [toolSheet, setToolSheet] = useState<AiTool | null>(null)
+  const [tool, setTool] = useState<AiTool | null>(null)
   const [preview, setPreview] = useState<{ before: string; after: string; meta: string } | null>(null)
-  const [toolParams, setToolParams] = useState<Record<string, any>>({})
+  const [tparams, setTparams] = useState<Record<string, any>>({})
   const [working, setWorking] = useState<string | null>(null)
   const [pf, setPf] = useState<Preflight | null>(null)
-  const [chat, setChat] = useState<ChatMsg[]>([])
-  const [chatOpen, setChatOpen] = useState(false)
+  const [fx, setFx] = useState<Record<string, string>>({})
+  const [styleOf, setStyleOf] = useState<Record<string, string>>({})
+  const [catOpen, setCatOpen] = useState(false)
+  const [chat, setChat] = useState<{ me: boolean; text: string; wait?: boolean }[]>([])
   const [text, setText] = useState('')
   const [listening, setListening] = useState(false)
+  const [designOpen, setDesignOpen] = useState(false)
+  const [view3d, setView3d] = useState(false)
+  const [occ, setOcc] = useState('Все')
   const [replaceOpen, setReplaceOpen] = useState(false)
-  const [cropOpen, setCropOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(params.get('share') === '1')
-  const [titleOpen, setTitleOpen] = useState(false)
   const history = useRef<{ layout: Layout; title: string }[]>([])
   const saveTimer = useRef<any>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const carRef = useRef<HTMLDivElement>(null)
 
-  const load = useCallback(async () => {
-    try {
-      const p = await api<Project>(`/api/projects/${id}`)
-      const local = await getLocal(p.id)
-      if (local?.dirty && local.revision === p.revision) {
-        setLayout(local.layout); setTitle(local.title)
-        toast({ title: 'Восстановили несохранённые правки', body: 'Черновик был сохранён на телефоне', mascot: 'robot' })
-      } else { setLayout(p.layout); setTitle(p.title) }
-      setProject(p); setRevision(p.revision)
-      if (p.status !== 'draft') toast({ title: 'Этот проект уже заказан', body: 'Изменения недоступны', mascot: 'robot' })
-    } catch (e) {
-      const local = await getLocal(id!)
-      if (local) { setLayout(local.layout); setTitle(local.title); setRevision(local.revision); setSave('offline') }
-      else toast({ title: errorText(e), kind: 'bad' })
-    }
+  // ---------- Загрузка ----------
+  useEffect(() => {
+    (async () => {
+      try {
+        const p = await api<Project>(`/api/projects/${id}`)
+        const local = await getLocal(p.id)
+        if (local?.dirty && local.revision === p.revision) { setLayout(local.layout); setTitle(local.title); toast({ title: 'Восстановили несохранённые правки', mascot: 'robot' }) }
+        else { setLayout(p.layout); setTitle(p.title) }
+        setProject(p); setRevision(p.revision)
+      } catch (e) {
+        const local = await getLocal(id!)
+        if (local) { setLayout(local.layout); setTitle(local.title); setRevision(local.revision); setSave('offline') } else toast({ title: errorText(e), kind: 'bad' })
+      }
+    })()
+    api<{ items: AiTool[] }>('/api/ai/tools').then((r) => setTools(r.items)).catch(() => {})
   }, [id])
 
-  useEffect(() => { load() }, [load])
-  useEffect(() => { api<{ items: AiTool[] }>('/api/ai/tools').then((r) => setTools(r.items)).catch(() => {}) }, [])
-
   const photos = useMemo(() => Object.fromEntries((project?.photos || []).map((p) => [p.id, p])), [project]) as Record<string, Photo>
-  const isBook = project?.product?.kind === 'book' || project?.product?.kind === 'calendar'
+  const kind = project?.product?.kind || 'book'
+  const isBook = kind === 'book'
+  const isSingle = kind === 'single'
   const aspect = aspectOf(project?.product, project?.options.size)
   const pages = layout?.pages || []
-  const spreads = isBook ? Math.ceil(pages.length / 2) : pages.length
+  const design: Design | undefined = designs.find((d) => d.id === (project?.options.template || project?.product?.specs.template))
   const canEdit = project?.status === 'draft'
-  const isOwner = project?.owner_id === user?.id
+
+  // ячейки карусели: для книги — обложка + развороты, иначе — по странице
+  const cells: number[][] = useMemo(() => {
+    if (!layout) return []
+    if (isBook) { const out: number[][] = [[-1]]; for (let i = 0; i < pages.length; i += 2) out.push([i, i + 1].filter((x) => x < pages.length)); return out }
+    return pages.map((_, i) => [i])
+  }, [layout, isBook, pages.length])
+  const curPages = cells[cell] || []
 
   // ---------- Сохранение ----------
   const persist = useCallback((next: Layout, nextTitle: string, rev: number) => {
     if (!project) return
     saveLocal({ id: project.id, title: nextTitle, options: project.options, layout: next, revision: rev, dirty: true })
-    setSave('saving')
-    clearTimeout(saveTimer.current)
+    setSave('saving'); clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
-      try {
-        const r = await pushDraft({ id: project.id, title: nextTitle, options: project.options, layout: next, revision: rev, dirty: true })
-        setRevision(r); setSave('saved')
-      } catch (e) { setSave(e instanceof ApiError && e.status === 0 ? 'offline' : 'error') }
-    }, 700)
+      try { const r = await pushDraft({ id: project.id, title: nextTitle, options: project.options, layout: next, revision: rev, dirty: true }); setRevision(r); setSave('saved') }
+      catch (e) { setSave(e instanceof ApiError && e.status === 0 ? 'offline' : 'error') }
+    }, 600)
   }, [project])
-
-  const commit = (next: Layout, nextTitle = title, record = true) => {
-    if (!canEdit) return
-    if (record && layout) history.current = [...history.current.slice(-30), { layout, title }]
-    setLayout(next); setTitle(nextTitle)
-    persist(next, nextTitle, revision)
+  const commit = (next: Layout, nextTitle = title) => {
+    if (!canEdit || !layout) return
+    history.current = [...history.current.slice(-30), { layout, title }]
+    setLayout(next); setTitle(nextTitle); persist(next, nextTitle, revision)
   }
-
   const flush = async () => {
     clearTimeout(saveTimer.current)
-    if (!project || !layout || save === 'saved') return revision
-    const r = await pushDraft({ id: project.id, title, options: project.options, layout, revision, dirty: true })
-    setRevision(r); setSave('saved')
-    return r
+    if (!project || !layout || save === 'saved') return
+    const r = await pushDraft({ id: project.id, title, options: project.options, layout, revision, dirty: true }); setRevision(r); setSave('saved')
   }
-
   const refetch = async () => {
     const p = await api<Project>(`/api/projects/${id}`)
     setProject(p); setLayout(p.layout); setTitle(p.title); setRevision(p.revision)
     saveLocal({ id: p.id, title: p.title, options: p.options, layout: p.layout, revision: p.revision, dirty: false })
     return p
   }
-
-  const undo = () => {
-    const prev = history.current.pop()
-    if (prev) { setLayout(prev.layout); setTitle(prev.title); persist(prev.layout, prev.title, revision) }
+  const undo = () => { const prev = history.current.pop(); if (prev) { setLayout(prev.layout); setTitle(prev.title); persist(prev.layout, prev.title, revision) } }
+  const setOptions = async (o: Record<string, string>) => {
+    if (!project) return
+    await flush().catch(() => {})
+    const r = await api<{ revision: number }>(`/api/projects/${project.id}`, { method: 'PUT', json: { options: o, revision } })
+    setRevision(r.revision); setProject({ ...project, options: { ...project.options, ...o } })
   }
 
-  // ---------- Предпечатная проверка (фоново) ----------
+  // ---------- Проверка Робота (фоном) ----------
   useEffect(() => {
     if (!project || save === 'saving') return
-    const t = setTimeout(() => api<Preflight>(`/api/projects/${project.id}/preflight`).then(setPf).catch(() => {}), 400)
+    const t = setTimeout(() => api<Preflight>(`/api/projects/${project.id}/preflight`).then(setPf).catch(() => {}), 500)
     return () => clearTimeout(t)
   }, [project, revision, save])
-
-  const issueMap = useMemo(() => {
+  const issues = useMemo(() => {
     const m: Record<number, Record<string, 'critical' | 'warning'>> = {}
-    for (const i of pf?.issues || []) {
-      if (i.page === null || i.slot === null || i.severity === 'info') continue
-      m[i.page] ||= {}
-      if (m[i.page][i.slot] !== 'critical') m[i.page][i.slot] = i.severity as any
-    }
+    for (const i of pf?.issues || []) { if (i.page === null || i.slot === null || i.severity === 'info') continue; (m[i.page] ||= {})[i.slot] = i.severity as any }
     return m
   }, [pf])
 
-  // ---------- Действия со страницами ----------
-  const selPhotoId = sel ? pages[sel.page]?.slots[sel.slot]?.photo_id : null
-  const selPhoto = selPhotoId ? photos[selPhotoId] : null
-  const visiblePages = isBook ? (spread < 0 ? [] : [spread * 2, spread * 2 + 1].filter((i) => i < pages.length)) : [Math.max(0, spread)]
+  // ---------- Карусель: тач, трекпад, мышь, клавиатура ----------
+  const goTo = (i: number) => { const el = carRef.current; if (!el) return; const n = Math.max(0, Math.min(cells.length - 1, i)); el.scrollTo({ left: n * el.clientWidth, behavior: 'smooth' }) }
+  const onScroll = () => { const el = carRef.current; if (!el) return; const i = Math.round(el.scrollLeft / el.clientWidth); if (i !== cell) { setCell(i); setSel(null) } }
+  const drag = useRef<{ x: number; left: number; moved: boolean; cell: number } | null>(null)
+  const onPointerDown = (e: React.PointerEvent) => { if (e.pointerType !== 'mouse' || e.button !== 0) return; drag.current = { x: e.clientX, left: carRef.current!.scrollLeft, moved: false, cell } }
+  const onPointerMove = (e: React.PointerEvent) => {
+    const d = drag.current; if (!d) return
+    const dx = e.clientX - d.x
+    if (Math.abs(dx) > 6) { d.moved = true; carRef.current!.classList.add('dragging') }
+    if (d.moved) carRef.current!.scrollLeft = d.left - dx
+  }
+  const onPointerUp = (e: React.PointerEvent) => {
+    const d = drag.current; drag.current = null; if (!d) return
+    carRef.current!.classList.remove('dragging')
+    if (d.moved) { const w = carRef.current!.clientWidth; const dx = e.clientX - d.x; goTo(d.cell + (dx < -w * 0.15 ? 1 : dx > w * 0.15 ? -1 : 0)); e.preventDefault() }
+  }
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.closest('input,textarea,[role=dialog]')) return
+      if (e.key === 'ArrowRight') goTo(cell + 1); if (e.key === 'ArrowLeft') goTo(cell - 1)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo() }
+    }
+    window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k)
+  })
 
+  // авто-выбор фото для вкладок, работающих с одним снимком
+  const firstSlot = (): Sel => { for (const pi of curPages) { if (pi < 0) continue; const si = pages[pi]?.slots.findIndex((s) => s.photo_id); if (si >= 0) return { page: pi, slot: si } } return null }
+  useEffect(() => { if (isSingle && !sel) { setSel({ page: 0, slot: 0 }); return } if (tab !== 'layout' && !sel) setSel(firstSlot()) }, [tab, cell, layout, isSingle])
+  const selPhotoId = sel ? pages[sel.page]?.slots[sel.slot]?.photo_id : (cell === 0 && isBook ? layout?.cover?.photo_id : null)
+  const selPhoto = selPhotoId ? photos[selPhotoId] : null
+  const slotAspect = () => { if (!sel) return aspect; const t = TEMPLATES[pages[sel.page].template]; const b = t.slots[Math.min(sel.slot, t.slots.length - 1)]; return b ? +(b[2] * aspect / b[3]).toFixed(3) : aspect }
+
+  // ---------- Страницы ----------
   const setPageTemplate = (pi: number, template: string) => {
-    const next = structuredClone(layout!) as Layout
-    const pg = next.pages[pi]
+    const next = structuredClone(layout!) as Layout; const pg = next.pages[pi]
     const ids = pg.slots.map((s) => s.photo_id).filter(Boolean) as string[]
-    const n = TEMPLATES[template].slots.length
-    pg.template = template
-    pg.slots = Array.from({ length: n }).map((_, i) => ({ photo_id: ids[i] ?? null, crop: { x: 0.5, y: 0.45, zoom: 1 } }))
+    pg.template = template; pg.slots = TEMPLATES[template].slots.map((_, i) => ({ photo_id: ids[i] ?? null, crop: { x: .5, y: .45, zoom: 1 } }))
     if (TEMPLATES[template].caption && pg.caption === undefined) pg.caption = ''
     commit(next)
-    if (ids.length > n) toast({ title: `${ids.length - n} фото вернулись в библиотеку проекта`, mascot: 'cat' })
   }
-
   const addPage = () => {
     const next = structuredClone(layout!) as Layout
     const used = new Set(next.pages.flatMap((p) => p.slots.map((s) => s.photo_id)))
-    const free = (project?.photos || []).filter((p) => !used.has(p.id))
-    const at = isBook ? Math.min(pages.length, (Math.max(spread, 0) + 1) * 2) : pages.length
-    const mk = (pid: string | null): Page => ({ id: `p${Math.random().toString(36).slice(2, 9)}`, template: 'full', slots: [{ photo_id: pid, crop: { x: 0.5, y: 0.45, zoom: 1 } }] })
-    const add = isBook ? [mk(free[0]?.id ?? null), mk(free[1]?.id ?? null)] : [mk(free[0]?.id ?? null)]
-    next.pages.splice(at, 0, ...add)
-    commit(next)
-    if (isBook) setSpread(Math.floor(at / 2))
+    const free = (project?.photos || []).filter((p) => !used.has(p.id) && p.source !== 'ai')
+    const mk = (pid: string | null): Page => ({ id: `p${Math.random().toString(36).slice(2, 9)}`, template: 'full', slots: [{ photo_id: pid, crop: { x: .5, y: .45, zoom: 1 } }] })
+    const at = Math.max(0, ...curPages) + 1
+    next.pages.splice(at, 0, ...(isBook ? [mk(free[0]?.id ?? null), mk(free[1]?.id ?? null)] : [mk(free[0]?.id ?? null)]))
+    commit(next); setTimeout(() => goTo(cell + 1), 50)
   }
-
-  const removePage = (pi: number) => {
+  const removePage = () => { if (!curPages.length || curPages[0] < 0) return; const next = structuredClone(layout!) as Layout; next.pages.splice(curPages[0], curPages.length); commit(next); setSel(null) }
+  const setSlotPhoto = (pid: string | null) => {
     const next = structuredClone(layout!) as Layout
-    next.pages.splice(pi, 1)
-    commit(next)
-    setSel(null)
-  }
-
-  const setSlotPhoto = (pi: number, si: number, photoId: string | null) => {
-    const next = structuredClone(layout!) as Layout
-    if (pi === -1) next.cover = { photo_id: photoId, crop: { x: 0.5, y: 0.45, zoom: 1 } }
-    else next.pages[pi].slots[si] = { photo_id: photoId, crop: { x: 0.5, y: 0.45, zoom: 1 } }
+    const target = sel || (isSingle ? { page: 0, slot: 0 } : null)
+    if (!target) next.cover = { photo_id: pid, crop: { x: .5, y: .45, zoom: 1 } }
+    else next.pages[target.page].slots[target.slot] = { photo_id: pid, crop: { x: .5, y: .45, zoom: 1 } }
     commit(next)
   }
-
-  const setCrop = (crop: { x: number; y: number; zoom: number }, record = false) => {
-    if (!sel) return
-    const next = structuredClone(layout!) as Layout
-    next.pages[sel.page].slots[sel.slot].crop = crop
-    commit(next, title, record)
+  const setCrop = (c: { x: number; y: number; zoom: number }) => { if (!sel) return; const next = structuredClone(layout!) as Layout; next.pages[sel.page].slots[sel.slot].crop = c; commit(next) }
+  const server = async (path: string, body?: any, label?: string) => {
+    setWorking(label || path)
+    try { await flush(); const p = await api<Project>(path, { method: 'POST', json: body }); setProject(p); setLayout(p.layout); setTitle(p.title); setRevision(p.revision); return p }
+    catch (e) { toast({ title: errorText(e), kind: 'bad' }) } finally { setWorking(null) }
   }
-
-  const relayout = async (mode: string) => {
-    setWorking(mode)
-    try {
-      await flush()
-      const p = await api<Project>(`/api/projects/${id}/relayout`, { method: 'POST', json: { mode } })
-      history.current.push({ layout: layout!, title })
-      setProject(p); setLayout(p.layout); setTitle(p.title); setRevision(p.revision); setSel(null)
-      return p
-    } finally { setWorking(null) }
+  const onDragEnd = (e: DragEndEvent) => {
+    if (!e.over || e.active.id === e.over.id) return
+    commit({ ...layout!, pages: arrayMove(pages, pages.findIndex((p) => p.id === e.active.id), pages.findIndex((p) => p.id === e.over!.id)) })
   }
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
 
-  // ---------- AI-инструменты ----------
-  const openTool = async (t: AiTool) => {
-    if (!selPhoto) return
-    setToolSheet(t); setPreview(null)
-    const defaults: Record<string, any> = {}
-    Object.entries(t.params || {}).forEach(([k, v]: any) => { defaults[k] = v.default })
-    if (t.id === 'smart_extend') defaults.aspect = slotAspect()
-    setToolParams(defaults)
-    if (!t.manual && t.id !== 'scene_magic') runPreview(t.id, defaults)
-  }
-
-  const slotAspect = () => {
-    if (!sel) return 1
-    const tpl = TEMPLATES[pages[sel.page].template]
-    const b = tpl.slots[Math.min(sel.slot, tpl.slots.length - 1)]
-    return +(b[2] * aspect / b[3]).toFixed(3)
-  }
-
-  const runPreview = async (tool: string, p: Record<string, any>) => {
+  // ---------- AI ----------
+  const runPreview = async (t: string, p: Record<string, any>) => {
     if (!selPhoto) return
     setPreview(null)
     try {
-      const res: Response = await api(`/api/ai/photos/${selPhoto.id}/preview`, { method: 'POST', json: { tool, params: p } })
-      const blob = await res.blob()
-      const status = res.headers.get('X-AI-Status')
-      setPreview({ before: media(selPhoto.thumb), after: URL.createObjectURL(blob),
-        meta: `${res.headers.get('X-AI-Provider') === 'builtin' ? 'Встроенный движок' : res.headers.get('X-AI-Provider')} · ${res.headers.get('X-AI-Duration')} мс${status === 'fallback' ? ' · резервный режим' : ''}` })
-    } catch (e) { toast({ title: errorText(e), kind: 'bad' }); setToolSheet(null) }
+      const res: Response = await api(`/api/ai/photos/${selPhoto.id}/preview`, { method: 'POST', json: { tool: t, params: p } })
+      setPreview({ before: media(selPhoto.thumb), after: URL.createObjectURL(await res.blob()), meta: `${res.headers.get('X-AI-Provider') === 'builtin' ? 'на сервере picPac' : res.headers.get('X-AI-Provider')} · ${res.headers.get('X-AI-Duration')} мс` })
+    } catch (e) { toast({ title: errorText(e), kind: 'bad' }); setTool(null) }
   }
-
-  const applyTool = async (tool: string, p: Record<string, any>, photoId = selPhoto?.id, quiet = false) => {
-    if (!photoId) return
-    setWorking(tool)
+  const openTool = (t: AiTool) => {
+    if (!selPhoto) { toast({ title: 'Нажмите на фото на странице' }); return }
+    const d: Record<string, any> = {}; Object.entries(t.params || {}).forEach(([k, v]: any) => { d[k] = v.default })
+    if (t.id === 'smart_extend') d.aspect = slotAspect()
+    setTparams(d); setTool(t); setPreview(null)
+    if (!t.manual && !t.generative) runPreview(t.id, d)
+  }
+  const apply = async (t: string, p: Record<string, any>, pid = selPhoto?.id, quiet = false) => {
+    if (!pid) return
+    setWorking(t)
     try {
       await flush()
-      const r = await api<{ photo: Photo; ai: any }>(`/api/ai/photos/${photoId}/apply`, { method: 'POST', json: { tool, params: p, project_id: id, replace: true } })
-      track('ai_used', { tool })
-      await refetch()
-      if (!quiet) toast({ title: 'Готово!', body: r.ai.status === 'fallback' ? 'Внешняя модель недоступна — сработал встроенный движок' : `${r.ai.provider_title} · ${(r.ai.duration_ms / 1000).toFixed(1)} с`, mascot: 'cat' })
-      setToolSheet(null)
-      return r
+      const r = await api<{ ai: any }>(`/api/ai/photos/${pid}/apply`, { method: 'POST', json: { tool: t, params: p, project_id: id, replace: true } })
+      track('ai_used', { tool: t }); await refetch(); setTool(null)
+      if (!quiet) toast({ title: 'Готово', body: `${r.ai.model} · ${(r.ai.duration_ms / 1000).toFixed(1)} с${r.ai.status === 'fallback' ? ' · резервный движок' : ''}`, mascot: 'cat' })
     } catch (e) { toast({ title: errorText(e), kind: 'bad' }) } finally { setWorking(null) }
   }
-
-  const revert = async () => {
-    if (!selPhoto?.parent_id) return
-    setWorking('revert')
-    try { await flush(); await api(`/api/ai/photos/${selPhoto.id}/revert?project_id=${id}`, { method: 'POST' }); await refetch(); toast({ title: 'Вернули оригинал', mascot: 'cat' }) }
-    catch (e) { toast({ title: errorText(e), kind: 'bad' }) } finally { setWorking(null) }
+  const applyFilter = async (f: typeof FILTERS[0]) => {
+    if (!selPhoto) return
+    const root = selPhoto.parent_id || selPhoto.id
+    if (f.id === 'none') { if (selPhoto.ai_tool === 'style') { await flush(); await api(`/api/ai/photos/${selPhoto.id}/revert?project_id=${id}`, { method: 'POST' }); await refetch() } setStyleOf({ ...styleOf, [root]: 'none' }); return }
+    setStyleOf({ ...styleOf, [root]: f.id })
+    setFx({ ...fx, [selPhoto.id]: f.css })
+    await apply('style', { style: f.id }, root, true)
+    setFx({})
   }
+  const revert = async () => { if (!selPhoto?.parent_id) return; await flush(); await api(`/api/ai/photos/${selPhoto.id}/revert?project_id=${id}`, { method: 'POST' }); await refetch(); toast({ title: 'Вернули оригинал' }) }
 
   // ---------- Кот-ассистент ----------
-  const runCommand = async (q: string) => {
+  const ask = async (q: string) => {
     if (!q.trim()) return
-    setText(''); setChatOpen(true)
-    setChat((c) => [...c, { from: 'me', text: q }, { from: 'cat', text: 'Думаю…', pending: true }])
+    setText(''); setChat((c) => [...c, { me: true, text: q }, { me: false, text: 'Думаю…', wait: true }])
     try {
-      const plan = await api<{ reply: string; actions: any[] }>('/api/ai/command', { method: 'POST', json: { text: q, project_id: id, selected_photo_id: selPhoto?.id } })
-      setChat((c) => [...c.slice(0, -1), { from: 'cat', text: plan.reply + (plan.actions.length ? ' Делаю…' : ''), pending: !!plan.actions.length }])
+      const plan = await api<{ reply: string; actions: any[]; _meta: any }>('/api/ai/command', { method: 'POST', json: { text: q, project_id: id, selected_photo_id: selPhoto?.id } })
+      const who = plan._meta?.provider === 'builtin' ? '' : ` (${plan._meta?.model})`
+      setChat((c) => [...c.slice(0, -1), { me: false, text: plan.reply + who, wait: !!plan.actions.length }])
       let cur = layout!
-      let curTitle = title
       for (const a of plan.actions) {
         if (a.type === 'photo_tool' || a.type === 'adjust') {
-          const tool = a.type === 'adjust' ? 'adjust' : a.tool
-          const ids = a.scope === 'selected' && selPhoto ? [selPhoto.id]
-            : Array.from(new Set(cur.pages.flatMap((p) => p.slots.map((s) => s.photo_id)).filter(Boolean))).slice(0, 10) as string[]
-          for (let i = 0; i < ids.length; i++) {
-            setChat((c) => [...c.slice(0, -1), { from: 'cat', text: `${plan.reply} Обрабатываю ${i + 1}/${ids.length}…`, pending: true }])
-            await applyTool(tool, a.params || {}, ids[i], true)
-          }
-          const p = await refetch(); cur = p.layout; curTitle = p.title
+          const ids = a.scope === 'selected' && selPhoto ? [selPhoto.id] : Array.from(new Set(cur.pages.flatMap((p) => p.slots.map((s) => s.photo_id)).filter(Boolean))).slice(0, 8) as string[]
+          for (const pid of ids) await apply(a.type === 'adjust' ? 'adjust' : a.tool, a.params || {}, pid, true)
+          cur = (await refetch()).layout
         } else if (a.type === 'layout') {
-          if (a.op === 'remove_page' && a.page >= 1 && a.page <= cur.pages.length) {
-            const next = structuredClone(cur); next.pages.splice(a.page - 1, 1); commit(next, curTitle); cur = next
-          } else if (a.op === 'add_page') { addPage() }
-          else {
-            const mode = a.op === 'auto_cover' ? 'cover' : a.op === 'relayout' ? 'curate' : a.op
-            const p = await relayout(mode); if (p) { cur = p.layout; curTitle = p.title }
-          }
-        } else if (a.type === 'title') { commit(cur, a.value); curTitle = a.value }
+          if (a.op === 'remove_page' && a.page >= 1 && a.page <= cur.pages.length) { const n = structuredClone(cur); n.pages.splice(a.page - 1, 1); commit(n); cur = n }
+          else if (a.op === 'add_page') addPage()
+          else { const p = await server(`/api/projects/${id}/relayout`, { mode: a.op === 'auto_cover' ? 'cover' : a.op === 'relayout' ? 'curate' : a.op }); if (p) cur = p.layout }
+        } else if (a.type === 'title') commit(cur, a.value)
       }
-      setChat((c) => [...c.slice(0, -1), { from: 'cat', text: plan.actions.length ? `${plan.reply} Готово! Не нравится — жми «Отменить».` : plan.reply }])
-      track('ai_used', { tool: 'command' })
-    } catch (e) { setChat((c) => [...c.slice(0, -1), { from: 'cat', text: `Ой: ${errorText(e)}` }]) }
+      setChat((c) => [...c.slice(0, -1), { me: false, text: plan.actions.length ? 'Готово! Если не понравится — «Отменить».' : plan.reply }])
+    } catch (e) { setChat((c) => [...c.slice(0, -1), { me: false, text: errorText(e) }]) }
   }
-
   const voice = () => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SR) { toast({ title: 'Голосовой ввод не поддерживается этим браузером', kind: 'bad' }); return }
-    const r = new SR(); r.lang = 'ru-RU'; r.interimResults = false
-    r.onresult = (e: any) => runCommand(e.results[0][0].transcript)
-    r.onend = () => setListening(false)
-    setListening(true); r.start()
+    if (!SR) { toast({ title: 'Браузер не поддерживает голосовой ввод' }); return }
+    const r = new SR(); r.lang = 'ru-RU'; r.onresult = (e: any) => ask(e.results[0][0].transcript); r.onend = () => setListening(false); setListening(true); r.start()
   }
-
-  // ---------- Загрузка доп. фото ----------
   const uploadMore = async (files: File[]) => {
     if (!files.length) return
     setWorking('upload')
-    try {
-      const fd = new FormData(); files.forEach((f) => fd.append('files', f)); fd.append('project_id', id!)
-      const r = await api<{ photos: Photo[]; rejected: any[] }>('/api/photos', { method: 'POST', body: fd })
-      await flush(); await refetch()
-      toast({ title: `Добавлено ${r.photos.length} фото`, body: r.rejected.length ? `Отклонено: ${r.rejected.length} — ${r.rejected[0].reason}` : 'Кот может переразложить книгу с ними', mascot: 'cat' })
-    } catch (e) { toast({ title: errorText(e), kind: 'bad' }) } finally { setWorking(null) }
+    try { const fd = new FormData(); files.forEach((f) => fd.append('files', f)); fd.append('project_id', id!); const r = await api<{ photos: Photo[] }>('/api/photos', { method: 'POST', body: fd }); await flush(); await refetch(); toast({ title: `Добавлено фото: ${r.photos.length}`, mascot: 'cat' }) }
+    catch (e) { toast({ title: errorText(e), kind: 'bad' }) } finally { setWorking(null) }
   }
 
-  // ---------- DnD страниц ----------
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
-  const onDragEnd = (e: DragEndEvent) => {
-    if (!e.over || e.active.id === e.over.id) return
-    const from = pages.findIndex((p) => p.id === e.active.id)
-    const to = pages.findIndex((p) => p.id === e.over!.id)
-    commit({ ...layout!, pages: arrayMove(pages, from, to) })
+  if (!layout) return <div className="editor center"><img src={MASCOT('cat-point')} alt="" className="mascot float" style={{ width: 120 }} /></div>
+  const imageTools = tools.filter((t) => t.type === 'image' && t.id !== 'style')
+  const warn = pf ? pf.critical + pf.warnings : 0
+
+  const renderCell = (pis: number[], ci: number) => {
+    if (pis[0] === -1) {
+      const cp = layout.cover?.photo_id ? photos[layout.cover.photo_id] : null
+      return (
+        <button onClick={() => { if (canEdit) { setSel(null); setReplaceOpen(true) } }} style={{ border: 0, background: 'none', padding: 0, cursor: 'pointer' }} aria-label="Обложка — сменить фото">
+          {cp ? <Mockup kind="book" src={media(cp.thumb)} size={Math.min(300, window.innerWidth * 0.7)} title={title} /> : <div className="card center" style={{ width: 220, height: 220 }}>Выберите обложку</div>}
+        </button>
+      )
+    }
+    if (isSingle) {
+      const s = pages[0]?.slots[0]; const ph = s?.photo_id ? photos[s.photo_id] : null
+      return (
+        <div style={{ width: '100%', maxWidth: 560, padding: '0 12px' }} onPointerDown={(e) => e.stopPropagation()}>
+          {ph ? <View3D product={project!.product} options={project!.options} images={[`/api/media/${ph.id}?size=preview`]} filter={fx[ph.id]} title={title} design={design}
+                  height={Math.max(260, Math.min(420, window.innerHeight * 0.48))} />
+            : <div className="center" style={{ height: 300 }}><button className="btn btn-primary" onClick={() => setReplaceOpen(true)}>Выбрать фото</button></div>}
+        </div>
+      )
+    }
+    return (
+      <div className={pis.length > 1 ? 'spread' : ''} style={{ width: '100%', maxWidth: pis.length > 1 ? 560 : aspect < 1 ? 300 : 420, boxShadow: pis.length > 1 ? undefined : '0 20px 44px rgba(0,0,0,.22)', borderRadius: 4, overflow: 'hidden' }}>
+        {pis.map((pi) => <PageView key={pages[pi].id} page={pages[pi]} photos={photos} aspect={aspect} design={design} issues={issues[pi]} filters={fx}
+          selected={sel?.page === pi ? sel.slot : null} onSlot={canEdit ? (si) => setSel({ page: pi, slot: si }) : undefined} />)}
+        {isBook && pis.length === 1 && <div className="bookpage" style={{ aspectRatio: String(aspect), background: design?.page || '#fff' }} />}
+      </div>
+    )
   }
-
-  if (!layout) return <div className="studio center"><div className="float"><Cat size={80} mood="think" /></div></div>
-
-  const crit = pf?.critical || 0
-  const warn = pf?.warnings || 0
-  const groups = Array.from(new Set(tools.filter((t) => t.type === 'image').map((t) => t.group)))
 
   return (
-    <div className="studio">
-      <div className="phone" style={{ background: 'transparent' }}>
-        <header className="topbar">
-          <button className="icon-btn" aria-label="Назад" onClick={async () => { await flush().catch(() => {}); nav('/') }}><ArrowLeft size={20} /></button>
-          <button className="title" style={{ background: 'none', border: 0, color: '#fff', cursor: 'pointer' }} onClick={() => canEdit && setTitleOpen(true)}>
-            {title}
-            <div className="tiny" style={{ color: save === 'saved' ? '#7fd1ad' : save === 'offline' ? 'var(--yellow)' : '#93a09d', fontWeight: 500 }}>
-              {save === 'saved' ? <><Cloud size={11} /> сохранено</> : save === 'saving' ? 'сохраняю…' : save === 'offline' ? <><CloudOff size={11} /> офлайн · на телефоне</> : 'ошибка сохранения'}
-            </div>
-          </button>
-          {project?.share_code || project?.product?.specs.shared ? (
-            <button className="icon-btn" aria-label="Пригласить" onClick={() => setShareOpen(true)}><Users size={19} /></button>
-          ) : (
-            <button className="icon-btn" aria-label="Отменить" onClick={undo} disabled={!history.current.length}><Undo2 size={19} /></button>
-          )}
-        </header>
+    <div className="editor">
+      <header className="topbar glass" style={{ position: 'relative' }}>
+        <button className="icon-btn plain" aria-label="Назад" onClick={async () => { await flush().catch(() => {}); nav('/') }}><ChevronLeft size={22} /></button>
+        <div className="title">{title}<div className="t-xs muted" style={{ fontWeight: 550 }}>{save === 'saved' ? 'сохранено' : save === 'saving' ? 'сохраняю…' : save === 'offline' ? 'офлайн — на телефоне' : 'ошибка сохранения'}</div></div>
+        {project?.product?.specs.shared && <button className="icon-btn plain" aria-label="Участники" onClick={() => setShareOpen(true)}><Users size={19} /></button>}
+        {!isSingle && <button className="icon-btn plain" aria-label="3D-просмотр" title="Посмотреть в 3D" onClick={async () => { await flush().catch(() => {}); setView3d(true) }}><Box size={19} /></button>}
+        <button className="icon-btn plain" aria-label="Отменить" onClick={undo} disabled={!history.current.length}><Undo2 size={19} /></button>
+        {canEdit && <button className="btn btn-primary btn-sm" onClick={async () => { await flush().catch(() => {}); nav(`/check/${id}`) }}>Далее{warn ? ` · ${warn}` : ''}</button>}
+      </header>
 
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingBottom: 150 }}>
-          {/* Сцена с разворотом */}
-          <div style={{ padding: '14px 16px 6px', position: 'relative' }}>
-            <AnimatePresence mode="wait">
-              <motion.div key={spread} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }}
-                drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.25}
-                onDragEnd={(_, i) => { if (i.offset.x < -70 && spread < spreads - 1) setSpread(spread + 1); if (i.offset.x > 70 && spread > (isBook ? -1 : 0)) setSpread(spread - 1) }}>
-                {isBook && spread < 0 ? (
-                  <div className="center" style={{ padding: '10px 0 4px', flexDirection: 'column', gap: 12 }}>
-                    <button onClick={() => { setSel(null); setReplaceOpen(true) }} style={{ background: 'none', border: 0, cursor: 'pointer' }} aria-label="Сменить обложку">
-                      <div style={{ width: 230, aspectRatio: String(aspect), borderRadius: '4px 10px 10px 4px', overflow: 'hidden', boxShadow: '0 24px 50px rgba(0,0,0,.5), inset 8px 0 0 rgba(0,0,0,.2)', position: 'relative', background: 'var(--coral)' }}>
-                        {layout.cover?.photo_id && photos[layout.cover.photo_id] && <Img src={photos[layout.cover.photo_id].thumb} style={{ width: '100%', height: '100%' }} />}
-                        <div style={{ position: 'absolute', inset: 'auto 0 0 0', padding: '30px 12px 14px', background: 'linear-gradient(transparent, rgba(0,0,0,.5))', color: '#fff', fontFamily: 'var(--hand)', fontSize: 28, textAlign: 'center' }}>{title}</div>
-                      </div>
-                    </button>
-                    <div className="small muted">Обложка · нажмите, чтобы сменить фото</div>
-                  </div>
-                ) : (
-                  <div className={isBook ? 'spread' : ''} style={isBook ? {} : { borderRadius: 6, overflow: 'hidden', boxShadow: '0 14px 40px rgba(0,0,0,.35)', maxWidth: aspect < 1 ? 300 : '100%', margin: '0 auto' }}>
-                    {visiblePages.map((pi) => (
-                      <PageView key={pages[pi].id} page={pages[pi]} photos={photos} aspect={aspect} issues={issueMap[pi]}
-                        selected={sel?.page === pi ? sel.slot : null} onSlot={canEdit ? (si) => setSel(sel?.page === pi && sel.slot === si ? null : { page: pi, slot: si }) : undefined} />
-                    ))}
-                    {isBook && visiblePages.length === 1 && <div className="bookpage center" style={{ aspectRatio: String(aspect), background: '#f3eee7' }}><span className="hand muted">конец</span></div>}
-                  </div>
-                )}
-              </motion.div>
-            </AnimatePresence>
-            <div className="between" style={{ marginTop: 10 }}>
-              <button className="icon-btn" aria-label="Предыдущий разворот" disabled={spread <= (isBook ? -1 : 0)} onClick={() => { setSpread(spread - 1); setSel(null) }}><ChevronLeft size={20} /></button>
-              <div className="small muted num">{isBook ? (spread < 0 ? 'Обложка' : `Страницы ${visiblePages.map((x) => x + 1).join('–')} из ${pages.length}`) : `${spread + 1} из ${pages.length}`}</div>
-              <button className="icon-btn" aria-label="Следующий разворот" disabled={spread >= spreads - 1} onClick={() => { setSpread(spread + 1); setSel(null) }}><ChevronRight size={20} /></button>
-            </div>
-          </div>
-
-          {/* Лента страниц с перетаскиванием */}
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <SortableContext items={pages.map((p) => p.id)} strategy={horizontalListSortingStrategy}>
-              <div className="thumbs" aria-label="Страницы — перетащите для смены порядка">
-                {isBook && (
-                  <button className={`thumb-page ${spread < 0 ? 'active' : ''}`} onClick={() => { setSpread(-1); setSel(null) }}>
-                    <div className="mini" style={{ gridTemplateColumns: '1fr', background: 'var(--coral)' }}>{layout.cover?.photo_id && photos[layout.cover.photo_id] && <img src={media(photos[layout.cover.photo_id].thumb)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}</div>
-                    обложка
-                  </button>
-                )}
-                {pages.map((p, i) => <ThumbPage key={p.id} page={p} index={i} photos={photos} active={visiblePages.includes(i) && spread >= 0}
-                  issue={issueMap[i] ? (Object.values(issueMap[i]).includes('critical') ? 'critical' : 'warning') : null}
-                  onClick={() => { setSpread(isBook ? Math.floor(i / 2) : i); setSel(null) }} />)}
-                {canEdit && <button className="thumb-page" onClick={addPage} aria-label="Добавить страницы"><div className="mini center" style={{ gridTemplateColumns: '1fr', background: 'var(--night-3)', color: '#fff' }}><Plus size={18} /></div>добавить</button>}
-              </div>
-            </SortableContext>
-          </DndContext>
-
-          {/* Контекстные инструменты */}
-          {canEdit && (sel && selPhoto ? (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-              <div className="between" style={{ padding: '10px 16px 4px' }}>
-                <div className="small"><b style={{ color: '#fff' }}>Фото {sel.slot + 1}</b> <span className="muted">· {selPhoto.width}×{selPhoto.height}{selPhoto.ai_tool ? ` · AI: ${tools.find((t) => t.id === selPhoto.ai_tool)?.title || selPhoto.ai_tool}` : ''}</span></div>
-                <button className="link small" onClick={() => setSel(null)}>Готово</button>
-              </div>
-              {groups.map((g) => (
-                <div key={g}>
-                  <div className="tiny muted" style={{ padding: '6px 16px 2px', textTransform: 'uppercase', letterSpacing: '.1em' }}>{g}</div>
-                  <div className="toolbelt">
-                    {tools.filter((t) => t.group === g && t.type === 'image').map((t) => {
-                      const I = ICONS[t.icon] || Sparkles
-                      return <button key={t.id} className={`tool ${t.manual ? '' : 'ai'}`} onClick={() => openTool(t)} disabled={!!working}><span className="ic"><I size={22} /></span>{t.title}</button>
-                    })}
-                  </div>
-                </div>
-              ))}
-              <div className="toolbelt" style={{ marginTop: 4 }}>
-                <button className="tool" onClick={() => setCropOpen(true)}><span className="ic"><Crop size={22} /></span>Кадр</button>
-                <button className="tool" onClick={() => setReplaceOpen(true)}><span className="ic"><Replace size={22} /></span>Заменить</button>
-                {selPhoto.parent_id && <button className="tool" onClick={revert}><span className="ic"><History size={22} /></span>Оригинал</button>}
-                <button className="tool" onClick={() => { setSlotPhoto(sel.page, sel.slot, null); setSel(null) }}><span className="ic"><Trash2 size={22} /></span>Убрать</button>
-              </div>
-            </motion.div>
-          ) : (
-            <div>
-              {spread >= 0 && (
-                <>
-                  <div className="tiny muted" style={{ padding: '10px 16px 2px', textTransform: 'uppercase', letterSpacing: '.1em' }}>Шаблон страницы {visiblePages[0] + 1}</div>
-                  <div className="toolbelt">
-                    {Object.entries(TEMPLATES).map(([k, t]) => (
-                      <button key={k} className={`tool ${pages[visiblePages[0]]?.template === k ? 'active' : ''}`} onClick={() => setPageTemplate(visiblePages[0], k)}>
-                        <span className="ic"><TemplateIcon id={k} /></span>{t.title}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-              <div className="toolbelt" style={{ marginTop: 6 }}>
-                <button className="tool ai" onClick={() => relayout('shuffle')} disabled={!!working}><span className="ic">{working === 'shuffle' ? <Loader2 className="spin" size={22} /> : <Shuffle size={22} />}</span>Перемешать</button>
-                <button className="tool ai" onClick={() => relayout('compact')} disabled={!!working}><span className="ic"><LayoutGrid size={22} /></span>Компактнее</button>
-                <button className="tool ai" onClick={() => relayout('spacious')} disabled={!!working}><span className="ic"><Expand size={22} /></span>Просторнее</button>
-                <button className="tool ai" disabled={!!working} onClick={async () => { setWorking('captions'); try { await flush(); const p = await api<Project>(`/api/projects/${id}/captions`, { method: 'POST' }); setProject(p); setLayout(p.layout); setTitle(p.title); setRevision(p.revision); toast({ title: 'Кот подписал страницы', mascot: 'cat' }) } catch (e) { toast({ title: errorText(e), kind: 'bad' }) } finally { setWorking(null) } }}>
-                  <span className="ic">{working === 'captions' ? <Loader2 className="spin" size={22} /> : <Quote size={22} />}</span>Подписи</button>
-                <button className="tool" onClick={() => fileRef.current?.click()}><span className="ic">{working === 'upload' ? <Loader2 className="spin" size={22} /> : <ImagePlus size={22} />}</span>Ещё фото</button>
-                {spread >= 0 && pages.length > 1 && <button className="tool" onClick={() => removePage(visiblePages[0])}><span className="ic"><Trash2 size={22} /></span>Удалить стр.</button>}
-                <button className="tool" onClick={undo} disabled={!history.current.length}><span className="ic"><Undo2 size={22} /></span>Отменить</button>
-              </div>
-            </div>
-          ))}
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png" multiple hidden onChange={(e) => { uploadMore(Array.from(e.target.files || [])); e.target.value = '' }} />
-        </main>
-
-        {/* Кот-чат + переход к проверке */}
-        <div className="fixed-cta stack" style={{ gap: 10, paddingLeft: 0, paddingRight: 0 }}>
-          <AnimatePresence>
-            {chatOpen && chat.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="stack" style={{ gap: 6, padding: '0 14px', maxHeight: 170, overflowY: 'auto' }}>
-                {chat.slice(-4).map((m, i) => (
-                  <div key={i} className={m.from === 'cat' ? 'mascot-line' : ''} style={m.from === 'me' ? { alignSelf: 'flex-end' } : {}}>
-                    {m.from === 'cat' && <Cat size={30} />}
-                    <div className="bubble dark" style={m.from === 'me' ? { background: 'var(--coral)', borderRadius: '18px 18px 6px 18px' } : {}}>
-                      {m.pending && <Loader2 size={13} className="spin" style={{ marginRight: 6, verticalAlign: -2 }} />}{m.text}
-                    </div>
-                  </div>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-          {canEdit && (
-            <form className="chatbar" onSubmit={(e) => { e.preventDefault(); runCommand(text) }}>
-              <Cat size={30} />
-              <input value={text} onChange={(e) => setText(e.target.value)} onFocus={() => setChatOpen(true)}
-                placeholder={selPhoto ? 'Скажи Коту: «сделай теплее»' : 'Скажи Коту: «убери 3-ю страницу»'} aria-label="Команда Коту" />
-              <button type="button" className="icon-btn" style={{ width: 36, height: 36, background: listening ? 'var(--coral)' : undefined }} onClick={voice} aria-label="Голосом"><Mic size={17} /></button>
-              <button className="icon-btn" style={{ width: 36, height: 36, background: 'var(--coral)', color: '#fff' }} aria-label="Отправить"><Send size={16} /></button>
-            </form>
-          )}
-          <div className="row" style={{ padding: '0 14px', gap: 10 }}>
-            <button className="btn grow" style={{ background: 'var(--night-3)', color: '#fff', height: 52 }} onClick={() => nav(`/check/${id}`)} aria-label="Проверка Робота">
-              <Robot size={30} mood={crit ? 'alert' : 'happy'} />
-              {pf ? (crit ? `${crit} крит.` : warn ? `${warn} совета` : 'Всё ок') : '…'}
-            </button>
-            {isOwner && canEdit ? (
-              <button className="btn btn-primary grow" style={{ height: 52, flex: 1.6 }} onClick={async () => { await flush().catch(() => {}); nav(`/check/${id}`) }}>К заказу <ChevronRight size={18} /></button>
-            ) : project && project.status !== 'draft' ? (
-              <button className="btn btn-primary grow" style={{ height: 52, flex: 1.6 }} onClick={() => nav('/orders')}>Мои заказы</button>
-            ) : (
-              <button className="btn btn-primary grow" style={{ height: 52, flex: 1.6 }} onClick={() => fileRef.current?.click()}><ImagePlus size={18} /> Добавить фото</button>
-            )}
-          </div>
+      <div className="editor-stage">
+        <div ref={carRef} className="carousel" onScroll={onScroll} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp}>
+          {cells.map((pis, ci) => <div key={ci} className="cell">{renderCell(pis, ci)}</div>)}
         </div>
+        {cells.length > 1 && (
+          <>
+            <div className="dots" aria-hidden>{cells.slice(0, 14).map((_, i) => <i key={i} className={i === cell ? 'on' : ''} />)}</div>
+            <div className="t-xs muted" style={{ textAlign: 'center', paddingBottom: 6 }}>{isBook ? (cell === 0 ? 'Обложка' : `Страницы ${curPages.map((x) => x + 1).join('–')} из ${pages.length}`) : `${cell + 1} из ${cells.length}`}</div>
+            <button className="icon-btn stage-arrow" aria-label="Назад по страницам" onClick={() => goTo(cell - 1)} disabled={cell === 0} style={{ position: 'absolute', left: 10, top: '45%' }}><ChevronLeft size={20} /></button>
+            <button className="icon-btn stage-arrow" aria-label="Вперёд по страницам" onClick={() => goTo(cell + 1)} disabled={cell >= cells.length - 1} style={{ position: 'absolute', right: 10, top: '45%' }}><ChevronRight size={20} /></button>
+          </>
+        )}
+        {canEdit && <button className="cat-fab" aria-label="Попросить Кота" onClick={() => setCatOpen(true)}><img src={MASCOT('cat-head')} alt="" /></button>}
       </div>
 
-      {/* Лист инструмента: превью до/после */}
-      <Sheet open={!!toolSheet} onClose={() => setToolSheet(null)} dark label={toolSheet?.title}>
-        {toolSheet && (
-          <div className="stack">
-            <div className="between">
-              <div><div className="h2" style={{ color: '#fff' }}>{toolSheet.title}</div><div className="small muted">{toolSheet.subtitle}</div></div>
-              <span className="pill" style={{ background: 'var(--night-3)', color: '#cfe0dc' }}>{toolSheet.provider_kind === 'builtin' ? 'локально' : toolSheet.provider}</span>
+      {canEdit && (
+        <div className="editor-panel">
+          {tab === 'layout' && (
+            <>
+              <div className="strip">
+                {!isSingle && curPages[0] >= 0 && Object.entries(TEMPLATES).map(([k, t]) => (
+                  <button key={k} className={`tool ${pages[curPages[0]]?.template === k ? 'on' : ''}`} onClick={() => setPageTemplate(curPages[0], k)}><span className="ic"><TplIcon id={k} /></span>{t.title}</button>
+                ))}
+                {(isBook || kind === 'card') && <button className="tool" onClick={() => setDesignOpen(true)}><span className="ic"><LayoutTemplate size={22} /></span>Дизайн</button>}
+                {isBook && <button className="tool" onClick={() => server(`/api/projects/${id}/relayout`, { mode: 'shuffle' }, 'shuffle')} disabled={!!working}><span className="ic">{working === 'shuffle' ? <Loader2 className="spin" size={22} /> : <Shuffle size={22} />}</span>Перемешать</button>}
+                {isBook && <button className="tool" onClick={() => server(`/api/projects/${id}/captions`, undefined, 'captions')} disabled={!!working}><span className="ic">{working === 'captions' ? <Loader2 className="spin" size={22} /> : <Quote size={22} />}</span>Подписи</button>}
+                {!isSingle && <button className="tool" onClick={addPage}><span className="ic"><Plus size={22} /></span>Страница</button>}
+                {!isSingle && curPages[0] >= 0 && pages.length > 1 && <button className="tool" onClick={removePage}><span className="ic"><Trash2 size={22} /></span>Удалить</button>}
+                {isSingle && project?.product.specs.colors?.map((c) => (
+                  <button key={c.id} className={`tool ${project.options.color === c.id ? 'on' : ''}`} onClick={() => setOptions({ color: c.id })} aria-label={c.label}>
+                    <span className="ic" style={{ background: c.hex, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.15)' }} />{c.label.split(' ')[0]}</button>
+                ))}
+                {isSingle && [...(project?.product.specs.covers || []), ...(project?.product.specs.papers || [])].length > 0 && (project!.product.specs.covers || []).length + (project!.product.specs.papers || []).length > 1 && (
+                  [...(project!.product.specs.covers || []).map((o) => ({ ...o, k: 'cover' })), ...(project!.product.specs.papers || []).map((o) => ({ ...o, k: 'paper' }))]
+                    .filter((o, _, arr) => arr.filter((x) => x.k === o.k).length > 1)
+                    .map((o) => <button key={o.k + o.id} className={`tool ${project!.options[o.k] === o.id ? 'on' : ''}`} onClick={() => setOptions({ [o.k]: o.id })}><span className="ic"><Sparkles size={20} /></span>{o.label}</button>)
+                )}
+                {isSingle && (project?.photos || []).filter((p) => !p.parent_id).map((p, i) => {
+                  const cur = pages[0]?.slots[0]?.photo_id; const curRoot = cur ? photos[cur]?.parent_id || cur : null
+                  return <button key={p.id} className={`filter ${curRoot === p.id ? 'on' : ''}`} onClick={() => { setSel({ page: 0, slot: 0 }); setSlotPhoto(p.id) }} aria-label={`Поставить фото ${i + 1}`}>
+                    <span className="fi"><img src={media(p.thumb)} alt="" /></span>Фото {i + 1}</button>
+                })}
+                <button className="tool" onClick={() => fileRef.current?.click()}><span className="ic">{working === 'upload' ? <Loader2 className="spin" size={22} /> : <ImagePlus size={22} />}</span>{isSingle ? 'Загрузить' : 'Ещё фото'}</button>
+              </div>
+              {!isSingle && pages.length > 1 && (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                  <SortableContext items={pages.map((p) => p.id)} strategy={horizontalListSortingStrategy}>
+                    <div className="pages-strip" aria-label="Порядок страниц — перетащите">
+                      {pages.map((p, i) => <Thumb key={p.id} page={p} index={i} photos={photos} on={curPages.includes(i)} onClick={() => goTo(isBook ? Math.floor(i / 2) + 1 : i)} />)}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              )}
+            </>
+          )}
+          {tab === 'filters' && (
+            <div className="strip">
+              {!selPhoto ? <div className="muted t-sm" style={{ padding: 20 }}>Нажмите на фото, чтобы выбрать фильтр</div> : FILTERS.map((f) => (
+                <button key={f.id} className={`filter ${(styleOf[selPhoto.parent_id || selPhoto.id] || (selPhoto.ai_tool === 'style' ? '' : 'none')) === f.id ? 'on' : ''}`} onClick={() => applyFilter(f)} disabled={!!working}>
+                  <span className="fi"><img src={media((photos[selPhoto.parent_id || ''] || selPhoto).thumb)} alt="" style={{ filter: f.css }} /></span>{f.label}
+                </button>
+              ))}
             </div>
-            {toolSheet.id === 'style' && (
-              <div className="row wrap" style={{ gap: 6 }}>
-                {STYLES.map((s) => <button key={s.id} className={`chip ${toolParams.style === s.id ? 'active' : ''}`} onClick={() => { const p = { ...toolParams, style: s.id }; setToolParams(p); runPreview('style', p) }}>{s.label}</button>)}
-              </div>
-            )}
-            {toolSheet.id === 'upscale' && (
-              <div className="seg" style={{ background: 'var(--night-3)' }}>
-                {[2, 4].map((s) => <button key={s} className={toolParams.scale === s ? 'active' : ''} style={{ color: toolParams.scale === s ? 'var(--ink)' : '#fff' }} onClick={() => { const p = { scale: s }; setToolParams(p); runPreview('upscale', p) }}>×{s}</button>)}
-              </div>
-            )}
-            {toolSheet.id === 'scene_magic' && (
-              <div className="stack" style={{ gap: 8 }}>
-                <input className="input" style={{ background: 'var(--night-3)', color: '#fff', boxShadow: 'none' }} value={toolParams.scene || ''} onChange={(e) => setToolParams({ ...toolParams, scene: e.target.value })} placeholder="на берегу моря на закате" />
-                <button className="btn btn-soft" onClick={() => runPreview('scene_magic', toolParams)}>Показать вариант</button>
-              </div>
-            )}
-            {toolSheet.manual ? (
-              <ManualAdjust photo={selPhoto!} busy={working === 'adjust'} onApply={(p) => applyTool('adjust', p)} />
-            ) : preview ? (
-              <>
-                <BeforeAfter before={preview.before} after={preview.after} />
-                <div className="tiny muted">{preview.meta} · превью на уменьшенной копии, применяется к оригиналу</div>
-              </>
-            ) : toolSheet.id !== 'scene_magic' ? (
-              <div className="scanbox center" style={{ height: 240, background: 'var(--night-3)' }}><div className="scanline" /><Robot size={60} mood="scan" /></div>
-            ) : null}
-            {!toolSheet.manual && (
-              <button className="btn btn-primary btn-lg btn-block" disabled={!!working || (!preview && toolSheet.id !== 'scene_magic')} onClick={() => applyTool(toolSheet.id, toolParams)}>
-                {working ? <><Loader2 className="spin" size={18} /> Обрабатываю оригинал…</> : <><Sparkles size={18} /> Применить</>}
-              </button>
-            )}
+          )}
+          {tab === 'enhance' && (
+            <div className="strip">
+              {imageTools.map((t) => { const I = ICON[t.icon] || Sparkles; return <button key={t.id} className="tool" onClick={() => openTool(t)} disabled={!!working}><span className="ic"><I size={22} /></span>{t.title}</button> })}
+            </div>
+          )}
+          {tab === 'crop' && (
+            <div className="strip" style={{ alignItems: 'center' }}>
+              {sel && selPhoto ? (
+                <>
+                  <div style={{ minWidth: 150, flex: 1 }}><div className="t-xs muted">Масштаб ×{(pages[sel.page].slots[sel.slot].crop?.zoom || 1).toFixed(2)}</div>
+                    <input type="range" min={1} max={2.5} step={0.05} value={pages[sel.page].slots[sel.slot].crop?.zoom || 1} onChange={(e) => setCrop({ ...pages[sel.page].slots[sel.slot].crop, zoom: +e.target.value })} aria-label="Масштаб" />
+                    <div className="row" style={{ gap: 6, marginTop: 4 }}>
+                      {(['x', 'y'] as const).map((ax) => <input key={ax} type="range" min={0} max={1} step={0.02} value={pages[sel.page].slots[sel.slot].crop?.[ax] ?? .5} onChange={(e) => setCrop({ ...pages[sel.page].slots[sel.slot].crop, [ax]: +e.target.value })} aria-label={ax === 'x' ? 'Сдвиг по горизонтали' : 'Сдвиг по вертикали'} />)}
+                    </div>
+                  </div>
+                  <button className="tool" onClick={() => server(`/api/projects/${id}/fit-faces`, undefined, 'faces')}><span className="ic"><ScanFace size={22} /></span>Лица в кадр</button>
+                  <button className="tool" onClick={() => apply('adjust', { rotate: 90 })}><span className="ic"><RotateCw size={22} /></span>Повернуть</button>
+                  <button className="tool" onClick={() => setReplaceOpen(true)}><span className="ic"><Replace size={22} /></span>Заменить</button>
+                  {selPhoto.parent_id && <button className="tool" onClick={revert}><span className="ic"><History size={22} /></span>Оригинал</button>}
+                  <button className="tool" onClick={() => setSlotPhoto(null)}><span className="ic"><Trash2 size={22} /></span>Убрать</button>
+                </>
+              ) : <div className="muted t-sm" style={{ padding: 20 }}>Нажмите на фото на странице</div>}
+            </div>
+          )}
+          <nav className="tabs" aria-label="Режимы редактора">
+            {([['layout', 'Макет', LayoutTemplate], ['filters', 'Фильтры', Palette], ['enhance', 'Улучшить', Wand2], ['crop', 'Кадр', Crop]] as const).map(([k, l, I]) => (
+              <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)} aria-pressed={tab === k}><I size={22} />{l}</button>
+            ))}
+          </nav>
+        </div>
+      )}
+      {!canEdit && project && <div className="editor-panel center" style={{ padding: 16 }}><button className="btn btn-primary" onClick={() => nav('/orders')}>Проект в заказе — к заказам</button></div>}
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png" multiple hidden onChange={(e) => { uploadMore(Array.from(e.target.files || [])); e.target.value = '' }} />
+
+      {/* До/после */}
+      <Sheet open={!!tool} onClose={() => setTool(null)} label={tool?.title}>
+        {tool && (
+          <div className="stack">
+            <div className="between"><div><h2 className="t-h2">{tool.title}</h2><div className="t-sm muted">{tool.subtitle}</div></div>
+              <span className="badge b-soft">{tool.provider_kind === 'builtin' ? (tool.id === 'upscale' || tool.id === 'remove_bg' ? 'нейросеть' : 'локально') : tool.provider}</span></div>
+            {tool.id === 'upscale' && <div className="seg">{[2, 4].map((s) => <button key={s} className={tparams.scale === s ? 'active' : ''} onClick={() => { setTparams({ scale: s }); runPreview('upscale', { scale: s }) }}>×{s}</button>)}</div>}
+            {tool.generative && <div className="row"><input className="input" value={tparams.scene || ''} onChange={(e) => setTparams({ ...tparams, scene: e.target.value })} placeholder="на берегу моря на закате" /><button className="btn btn-secondary" onClick={() => runPreview(tool.id, tparams)}>Показать</button></div>}
+            {tool.manual ? <Manual photo={selPhoto!} busy={working === 'adjust'} onApply={(p) => apply('adjust', p)} />
+              : preview ? <><BeforeAfter before={preview.before} after={preview.after} /><div className="t-xs muted">{preview.meta} · превью, на оригинал применится в полном разрешении</div></>
+                : !tool.generative && <div className="card scan center" style={{ height: 220 }}><Avatar who="robot" size={70} /></div>}
+            {!tool.manual && <button className="btn btn-primary btn-lg btn-block" disabled={!!working || (!preview && !tool.generative)} onClick={() => apply(tool.id, tparams)}>{working ? <><Loader2 className="spin" size={18} /> Обрабатываю оригинал…</> : 'Применить'}</button>}
           </div>
         )}
       </Sheet>
 
-      {/* Кадрирование */}
-      <Sheet open={cropOpen && !!sel && !!selPhoto} onClose={() => { setCropOpen(false); if (sel) setCrop(pages[sel.page].slots[sel.slot].crop, true) }} dark label="Кадр">
-        {sel && selPhoto && <CropEditor photo={selPhoto} aspect={slotAspect()} crop={pages[sel.page].slots[sel.slot].crop} onChange={(c) => setCrop(c)} />}
-      </Sheet>
-
-      {/* Замена фото */}
-      <Sheet open={replaceOpen} onClose={() => setReplaceOpen(false)} dark label="Выбор фото">
-        <div className="h2" style={{ color: '#fff', marginBottom: 10 }}>{sel ? 'Заменить фото' : 'Фото на обложку'}</div>
-        <div className="grid3">
-          {(project?.photos || []).filter((p) => p.source !== 'ai' || !(project?.photos || []).some((x) => x.parent_id === p.id && false)).map((p) => {
-            const used = pages.some((pg) => pg.slots.some((s) => s.photo_id === p.id))
-            return (
-              <button key={p.id} className="tile" onClick={() => { sel ? setSlotPhoto(sel.page, sel.slot, p.id) : setSlotPhoto(-1, 0, p.id); setReplaceOpen(false) }}>
-                <img src={media(p.thumb)} alt="" />
-                {used && <span className="pill pill-dark flag tiny">в книге</span>}
-              </button>
-            )
-          })}
+      {/* Кот */}
+      <Sheet open={catOpen} onClose={() => setCatOpen(false)} label="Кот-ассистент">
+        <div className="stack">
+          <div className="row"><Avatar who="cat" size={52} /><div><h2 className="t-h2">Что поменять?</h2><div className="t-sm muted">Скажите словами — я сделаю, а вы сможете отменить</div></div></div>
+          {chat.length > 0 && <div className="stack" style={{ gap: 8, maxHeight: 240, overflowY: 'auto' }}>
+            {chat.map((m, i) => <div key={i} className="bubble" style={m.me ? { alignSelf: 'flex-end', background: 'var(--primary)', color: 'var(--primary-ink)', borderRadius: '20px 20px 6px 20px' } : { alignSelf: 'flex-start' }}>{m.wait && <Loader2 size={13} className="spin" style={{ marginRight: 6, verticalAlign: -2 }} />}{m.text}</div>)}
+          </div>}
+          <div className="row wrap" style={{ gap: 6 }}>{SUGGEST.map((s) => <button key={s} className="chip" onClick={() => ask(s)}>{s}</button>)}</div>
+          <form className="row" onSubmit={(e) => { e.preventDefault(); ask(text) }}>
+            <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Например: сделай фото ярче" aria-label="Команда Коту" />
+            <button type="button" className="icon-btn plain" style={listening ? { background: 'var(--primary)', color: 'var(--primary-ink)' } : {}} onClick={voice} aria-label="Сказать голосом"><Mic size={18} /></button>
+            <button className="icon-btn" style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }} aria-label="Отправить"><Send size={17} /></button>
+          </form>
         </div>
       </Sheet>
 
-      {/* Название */}
-      <Sheet open={titleOpen} onClose={() => setTitleOpen(false)} label="Название">
-        <form className="stack" onSubmit={(e) => { e.preventDefault(); commit(layout, (e.currentTarget.elements.namedItem('t') as HTMLInputElement).value || title); setTitleOpen(false) }}>
-          <div className="h2">Название книги</div>
-          <input name="t" className="input" defaultValue={title} maxLength={80} autoFocus />
-          <button className="btn btn-primary btn-block">Сохранить</button>
-        </form>
+      {view3d && project && (
+        <div className="viewer3d" role="dialog" aria-label="3D-просмотр">
+          <header className="topbar glass" style={{ position: 'relative' }}>
+            <button className="icon-btn plain" aria-label="Закрыть" onClick={() => setView3d(false)}><X size={22} /></button>
+            <div className="title">{title}<div className="t-xs muted" style={{ fontWeight: 550 }}>так изделие выйдет из печати</div></div>
+          </header>
+          <View3D product={project.product} options={project.options} layout={layout} photos={photos} design={design} title={title} filters={fx}
+            images={Array.from(new Set(pages.flatMap((p) => p.slots.map((x) => x.photo_id)).filter(Boolean) as string[])).slice(0, 12).map((pid) => `/api/media/${pid}?size=preview`)} height="100%" />
+        </div>
+      )}
+      {/* Дизайн */}
+      <Sheet open={designOpen} onClose={() => setDesignOpen(false)} label="Дизайн">
+        <h2 className="t-h2" style={{ marginBottom: 10 }}>Дизайн</h2>
+        <div className="hscroll" style={{ gap: 8, marginBottom: 6 }}>{OCCASIONS.map((o) => <button key={o} className={`chip ${occ === o ? 'active' : ''}`} onClick={() => setOcc(o)}>{o[0].toUpperCase() + o.slice(1)}</button>)}</div>
+        <div className="design-grid">
+          {byOccasion(designs, occ).map((d) => <DesignCard key={d.id} d={d} title={title.split(' ').slice(0, 2).join(' ')} on={project?.options.template === d.id} onClick={() => { setOptions({ template: d.id }); setDesignOpen(false) }} />)}
+        </div>
       </Sheet>
 
-      <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} project={project} onShared={refetch} />
+      {/* Замена фото */}
+      <Sheet open={replaceOpen} onClose={() => setReplaceOpen(false)} label="Выбор фото">
+        <h2 className="t-h2" style={{ marginBottom: 12 }}>{sel ? 'Заменить фото' : 'Фото на обложку'}</h2>
+        <div className="grid3" style={{ borderRadius: 16, overflow: 'hidden' }}>
+          {(project?.photos || []).map((p) => <button key={p.id} className="pick" onClick={() => { setSlotPhoto(p.id); setReplaceOpen(false) }}><img src={media(p.thumb)} alt="" /></button>)}
+        </div>
+      </Sheet>
+
+      <Share open={shareOpen} onClose={() => setShareOpen(false)} project={project} onChanged={refetch} />
     </div>
   )
 }
 
-function ThumbPage({ page, index, photos, active, issue, onClick }: { page: Page; index: number; photos: Record<string, Photo>; active: boolean; issue: string | null; onClick: () => void }) {
+function Thumb({ page, index, photos, on, onClick }: { page: Page; index: number; photos: Record<string, Photo>; on: boolean; onClick: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: page.id })
   const first = page.slots.find((s) => s.photo_id && photos[s.photo_id])
   return (
-    <button ref={setNodeRef} className={`thumb-page ${active ? 'active' : ''}`} onClick={onClick} {...attributes} {...listeners}
-      style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 5 : undefined, opacity: isDragging ? 0.8 : 1 }} aria-label={`Страница ${index + 1}`}>
-      <div className="mini" style={{ gridTemplateColumns: '1fr', aspectRatio: '1', position: 'relative' }}>
-        {first ? <img src={media(photos[first.photo_id!].thumb)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
-          : <div className="center" style={{ width: '100%', height: '100%', background: '#fbf7f1', color: 'var(--coral)', fontFamily: 'var(--hand)', fontSize: 13 }}>{page.template === 'text' ? '♥' : '+'}</div>}
-        {issue && <span className="dot" style={{ position: 'absolute', top: 3, right: 3, background: issue === 'critical' ? 'var(--bad)' : 'var(--warn)' }} />}
-      </div>
-      {index + 1}
+    <button ref={setNodeRef} className={`pthumb ${on ? 'on' : ''}`} onClick={onClick} {...attributes} {...listeners} aria-label={`Страница ${index + 1}`}
+      style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 5 : undefined }}>
+      <div className="m">{first ? <img src={media(photos[first.photo_id!].thumb)} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="center" style={{ height: '100%', color: 'var(--primary)' }}>♥</div>}</div>{index + 1}
     </button>
   )
 }
 
-function TemplateIcon({ id }: { id: string }) {
+function TplIcon({ id }: { id: string }) {
   const t = TEMPLATES[id]
   return (
-    <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden>
-      <rect x="1" y="1" width="28" height="28" rx="3" fill="none" stroke="currentColor" strokeOpacity=".4" />
-      {t.slots.map(([x, y, w, h], i) => <rect key={i} x={1 + x * 28} y={1 + y * 28} width={w * 28} height={h * 28} rx="1.5" fill="currentColor" opacity=".85" />)}
-      {t.caption && <rect x="8" y="24" width="14" height="2" rx="1" fill="currentColor" />}
+    <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
+      <rect x="1" y="1" width="26" height="26" rx="4" fill="none" stroke="currentColor" strokeOpacity=".35" />
+      {t.slots.map(([x, y, w, h], i) => <rect key={i} x={1 + x * 26} y={1 + y * 26} width={w * 26} height={h * 26} rx="1.5" fill="currentColor" opacity=".85" />)}
+      {t.caption && <rect x="8" y={t.slots.length ? 23 : 13} width="12" height="2" rx="1" fill="currentColor" />}
     </svg>
   )
 }
 
-function CropEditor({ photo, aspect, crop, onChange }: { photo: Photo; aspect: number; crop: { x: number; y: number; zoom: number }; onChange: (c: any) => void }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const drag = useRef<{ x: number; y: number; cx: number; cy: number } | null>(null)
-  const pos = `${crop.x * 100}% ${crop.y * 100}%`
-  return (
-    <div className="stack">
-      <div className="h2" style={{ color: '#fff' }}>Кадрирование</div>
-      <div ref={ref} style={{ width: '100%', aspectRatio: String(aspect), borderRadius: 12, overflow: 'hidden', touchAction: 'none', cursor: 'grab', position: 'relative', maxHeight: 360 }}
-        onPointerDown={(e) => { (e.target as Element).setPointerCapture?.(e.pointerId); drag.current = { x: e.clientX, y: e.clientY, cx: crop.x, cy: crop.y } }}
-        onPointerMove={(e) => {
-          if (!drag.current || !ref.current) return
-          const r = ref.current.getBoundingClientRect()
-          const nx = Math.max(0, Math.min(1, drag.current.cx - (e.clientX - drag.current.x) / r.width / crop.zoom))
-          const ny = Math.max(0, Math.min(1, drag.current.cy - (e.clientY - drag.current.y) / r.height / crop.zoom))
-          onChange({ ...crop, x: +nx.toFixed(3), y: +ny.toFixed(3) })
-        }}
-        onPointerUp={() => { drag.current = null }}>
-        <img src={media(photo.thumb)} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: pos, transform: `scale(${crop.zoom})`, transformOrigin: pos }} />
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: 'linear-gradient(rgba(255,255,255,.25) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.25) 1px, transparent 1px)', backgroundSize: '33.33% 33.33%' }} />
-      </div>
-      <label className="small muted" htmlFor="zoom">Масштаб ×{crop.zoom.toFixed(2)} — перетащите фото, чтобы выбрать фрагмент</label>
-      <input id="zoom" type="range" min={1} max={2.5} step={0.05} value={crop.zoom} onChange={(e) => onChange({ ...crop, zoom: +e.target.value })} style={{ accentColor: 'var(--coral)' }} />
-      <button className="btn btn-soft" onClick={() => onChange({ x: 0.5, y: 0.45, zoom: 1 })}><RefreshCw size={16} /> Сбросить</button>
-    </div>
-  )
-}
-
-function ManualAdjust({ photo, busy, onApply }: { photo: Photo; busy: boolean; onApply: (p: any) => void }) {
-  const [v, setV] = useState({ brightness: 0, contrast: 0, saturation: 0, temperature: 0, rotate: 0 })
+function Manual({ photo, busy, onApply }: { photo: Photo; busy: boolean; onApply: (p: any) => void }) {
+  const [v, setV] = useState({ brightness: 0, contrast: 0, saturation: 0, temperature: 0 })
   const filter = `brightness(${1 + v.brightness / 250}) contrast(${1 + v.contrast / 120}) saturate(${1 + v.saturation / 100}) sepia(${Math.max(0, v.temperature) / 300}) hue-rotate(${v.temperature < 0 ? v.temperature / 6 : 0}deg)`
-  const S = ({ k, label }: { k: keyof typeof v; label: string }) => (
-    <div className="field"><label className="between" style={{ color: '#cfd9d6' }}>{label}<span className="num">{v[k] > 0 ? '+' : ''}{v[k]}</span></label>
-      <input type="range" min={-100} max={100} value={v[k]} onChange={(e) => setV({ ...v, [k]: +e.target.value })} style={{ accentColor: 'var(--coral)' }} /></div>
-  )
+  const L: Record<string, string> = { brightness: 'Яркость', contrast: 'Контраст', saturation: 'Насыщенность', temperature: 'Температура' }
   return (
     <div className="stack">
-      <div style={{ borderRadius: 12, overflow: 'hidden', maxHeight: 260 }}>
-        <img src={media(photo.thumb)} alt="" style={{ width: '100%', maxHeight: 260, objectFit: 'contain', filter, transform: `rotate(${v.rotate}deg)`, transition: 'transform .3s' }} />
-      </div>
-      <S k="brightness" label="Яркость" /><S k="contrast" label="Контраст" /><S k="saturation" label="Насыщенность" /><S k="temperature" label="Температура" />
-      <div className="row">
-        <button className="btn btn-soft grow" onClick={() => setV({ ...v, rotate: (v.rotate + 90) % 360 })}>Повернуть 90°</button>
-        <button className="btn btn-primary grow" disabled={busy} onClick={() => onApply(v)}>{busy ? <Loader2 className="spin" size={18} /> : 'Применить'}</button>
-      </div>
+      <img src={media(photo.thumb)} alt="" style={{ width: '100%', maxHeight: 240, objectFit: 'contain', borderRadius: 16, filter }} />
+      {(Object.keys(v) as (keyof typeof v)[]).map((k) => <div key={k} className="field"><span className="label between">{L[k]}<span className="num">{v[k]}</span></span><input type="range" min={-100} max={100} value={v[k]} onChange={(e) => setV({ ...v, [k]: +e.target.value })} /></div>)}
+      <button className="btn btn-primary btn-block" disabled={busy} onClick={() => onApply(v)}>{busy ? <Loader2 className="spin" size={18} /> : 'Применить'}</button>
     </div>
   )
 }
 
-function ShareSheet({ open, onClose, project, onShared }: { open: boolean; onClose: () => void; project: Project | null; onShared: () => void }) {
+function Share({ open, onClose, project, onChanged }: { open: boolean; onClose: () => void; project: Project | null; onChanged: () => void }) {
   const { toast } = useApp()
-  const [code, setCode] = useState<string | null>(project?.share_code || null)
-  useEffect(() => { setCode(project?.share_code || null) }, [project])
+  const [code, setCode] = useState<string | null>(null)
+  useEffect(() => setCode(project?.share_code || null), [project])
   const link = code ? `${location.origin}/join/${code}` : ''
-  const make = async () => {
-    const r = await api<{ share_code: string }>(`/api/projects/${project!.id}/share`, { method: 'POST' })
-    setCode(r.share_code); onShared()
-  }
-  const share = async () => {
-    try {
-      if ((navigator as any).share) await (navigator as any).share({ title: project?.title, text: 'Скидываем фото в общий альбом picPac!', url: link })
-      else { await navigator.clipboard.writeText(link); toast({ title: 'Ссылка скопирована', mascot: 'cat' }) }
-    } catch { /* отмена */ }
-  }
+  const make = async () => { const r = await api<{ share_code: string }>(`/api/projects/${project!.id}/share`, { method: 'POST' }); setCode(r.share_code); onChanged() }
+  const share = async () => { try { if ((navigator as any).share) await (navigator as any).share({ title: project?.title, url: link }); else { await navigator.clipboard.writeText(link); toast({ title: 'Ссылка скопирована' }) } } catch { /* отмена */ } }
   const total = Object.values(project?.contributions || {}).reduce((a, b) => a + b, 0)
   return (
     <Sheet open={open} onClose={onClose} label="Общий альбом">
       <div className="stack">
-        <div className="row"><Cat size={52} mood="wow" /><div><div className="h2">Скинемся на альбом</div><div className="small muted">Каждый добавит свои фото по ссылке — без регистрации</div></div></div>
-        {code ? (
-          <>
-            <div className="card row" style={{ padding: 12 }}>
-              <div className="grow small" style={{ wordBreak: 'break-all' }}>{link}</div>
-              <button className="icon-btn" aria-label="Копировать" onClick={async () => { await navigator.clipboard.writeText(link).catch(() => {}); toast({ title: 'Скопировано', mascot: 'cat' }) }}><Copy size={18} /></button>
-            </div>
-            <button className="btn btn-primary btn-block" onClick={share}><Share2 size={18} /> Отправить в чат класса</button>
-          </>
-        ) : <button className="btn btn-primary btn-block" onClick={make}>Создать ссылку</button>}
-        <div className="divider" />
-        <div className="between"><div className="h3">Участники</div><span className="small muted">{total} фото</span></div>
-        <div className="stack" style={{ gap: 8 }}>
-          <div className="row"><span className="pill pill-dark">организатор</span><span className="grow">{project?.owner_name}</span><b className="num">{project?.contributions?.[String(project?.owner_id)] || 0} фото</b></div>
-          {(project?.members || []).map((m) => (
-            <div key={m.user_id} className="row"><span className="pill pill-soft">участник</span><span className="grow">{m.name}</span><b className="num">{project?.contributions?.[String(m.user_id)] || 0} фото</b></div>
-          ))}
-          {!project?.members?.length && <div className="small muted">Пока никого — отправьте ссылку, и прогресс появится здесь.</div>}
+        <div className="row"><Avatar who="cat" size={52} /><div><h2 className="t-h2">Скинемся на альбом</h2><div className="t-sm muted">Каждый добавит свои фото по ссылке</div></div></div>
+        {code ? <>
+          <div className="card flat row"><span className="grow t-sm" style={{ wordBreak: 'break-all' }}>{link}</span><button className="icon-btn plain" aria-label="Копировать" onClick={() => navigator.clipboard.writeText(link).then(() => toast({ title: 'Скопировано' }))}><Copy size={17} /></button></div>
+          <button className="btn btn-primary btn-block" onClick={share}><Share2 size={18} /> Отправить в чат</button>
+        </> : <button className="btn btn-primary btn-block" onClick={make}>Создать ссылку</button>}
+        <div className="between"><h3 className="t-h3">Участники</h3><span className="t-sm muted">{total} фото</span></div>
+        <div className="list">
+          <div className="list-row"><span className="badge b-primary">организатор</span><span className="grow">{project?.owner_name}</span><b>{project?.contributions?.[String(project?.owner_id)] || 0}</b></div>
+          {(project?.members || []).map((m) => <div key={m.user_id} className="list-row"><span className="grow">{m.name}</span><b>{project?.contributions?.[String(m.user_id)] || 0}</b></div>)}
         </div>
-        <div className="card flat small">
-          💛 Промокод <b>SKINEMSYA</b> даёт −15% на общий альбом. В корзине счёт можно разделить на {1 + (project?.members?.length || 0)} участников.
-        </div>
+        <div className="t-sm muted">Промокод SKINEMSYA — −15%. При оформлении сумму можно разделить на всех участников.</div>
       </div>
     </Sheet>
   )

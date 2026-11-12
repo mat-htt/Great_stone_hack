@@ -81,6 +81,14 @@ def analyze(img: Image.Image) -> dict[str, Any]:
     bright = float(gray.mean())
     faces_out: list[dict[str, float]] = []
     try:
+        from .ai.neural import detect_faces
+        neural_faces = detect_faces(np.asarray(work))
+    except Exception:
+        neural_faces = None
+    if neural_faces is not None:
+        return {"sharpness": round(sharp, 1), "brightness": round(bright, 1), "faces": neural_faces,
+                "phash": dhash(img), "face_model": "YuNet"}
+    try:
         det = _faces_detector()
         found = det.detectMultiScale(gray, scaleFactor=1.15, minNeighbors=6, minSize=(36, 36))
         h, w = gray.shape
@@ -88,7 +96,8 @@ def analyze(img: Image.Image) -> dict[str, Any]:
             faces_out.append({"x": x / w, "y": y / h, "w": fw / w, "h": fh / h})
     except Exception:
         pass
-    return {"sharpness": round(sharp, 1), "brightness": round(bright, 1), "faces": faces_out, "phash": dhash(img)}
+    return {"sharpness": round(sharp, 1), "brightness": round(bright, 1), "faces": faces_out, "phash": dhash(img),
+            "face_model": "Haar"}
 
 
 def sharpness_norm(sharp: float) -> float:

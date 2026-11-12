@@ -1,12 +1,16 @@
 FROM python:3.12-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 DATA_DIR=/data PIP_NO_CACHE_DIR=1
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 DATA_DIR=/data MODELS_DIR=/app/models PIP_NO_CACHE_DIR=1
 RUN apt-get update && apt-get install -y --no-install-recommends libglib2.0-0 curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --retries 10 --timeout 60 -r requirements.txt
 COPY app ./app
 COPY tests ./tests
+COPY scripts ./scripts
+# Нейросети (YuNet, FSRCNN, U²-Net-p): берём локальные копии, недостающие докачиваем
+COPY models ./models
+RUN python scripts/download_models.py /app/models
 RUN useradd -m picpac && mkdir -p /data && chown -R picpac /data /app
 USER picpac
 VOLUME /data

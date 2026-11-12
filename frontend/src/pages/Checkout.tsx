@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { CreditCard, Lock, Minus, Plus, Tag, Users } from 'lucide-react'
 import { api, ApiError, media, money, track, uuid, type Order, type Project, type Quote } from '../api'
 import { Say } from '../components/Mascots'
-import { Book3D, TopBar, useDebounced } from '../components/ui'
+import { TopBar, useDebounced } from '../components/ui'
+import { Mockup } from '../components/Mockup'
 import { errorText, useApp } from '../store'
 
 interface Delivery { id: string; label: string; price_minor: number; days: number; free_from_minor: number }
@@ -67,18 +68,18 @@ export default function Checkout() {
     } finally { setBusy(false) }
   }
 
-  if (!project) return <div className="phone"><TopBar back title="Оформление" /><div className="page">{error ? <div className="card pill-bad">{error}</div> : <div className="skeleton" style={{ height: 200 }} />}</div></div>
+  if (!project) return <div className="screen"><TopBar back title="Оформление" /><div className="content">{error ? <div className="card b-bad">{error}</div> : <div className="skeleton" style={{ height: 200 }} />}</div></div>
 
   return (
-    <div className="phone">
+    <div className="screen">
       <TopBar back={`/check/${id}`} title="Оформление" />
-      <main className="page no-tab stack" style={{ gap: 18 }}>
+      <main className="content no-dock stack" style={{ gap: 18 }}>
         <div className="card row" style={{ gap: 16 }}>
-          <Book3D coverUrl={project.cover_photo_id ? media(`/api/media/${project.cover_photo_id}?size=thumb`) : undefined} width={84} color="#DD5757" />
+          {project.cover_photo_id ? <Mockup kind={project.product.mockup} src={media(`/api/media/${project.cover_photo_id}?size=thumb`)} size={86} /> : <span style={{ width: 70, height: 70, borderRadius: 16, background: 'var(--fill)' }} />}
           <div className="grow">
-            <div className="h3">{project.title}</div>
-            <div className="small muted">{project.product.title} · {project.product.specs.sizes.find((s) => s.id === project.options.size)?.label}</div>
-            <div className="small muted">{project.product.kind === 'prints' ? `${photos} отпечатков` : `${pages} стр. · ${photos} фото`}</div>
+            <div className="t-h3">{project.title}</div>
+            <div className="t-sm muted">{project.product.title} · {project.product.specs.sizes.find((s) => s.id === project.options.size)?.label}</div>
+            <div className="t-sm muted">{project.product.kind === 'prints' ? `${photos} отпечатков` : `${pages} стр. · ${photos} фото`}</div>
           </div>
           <div className="row" style={{ gap: 6 }} aria-label="Количество">
             <button className="icon-btn" style={{ width: 34, height: 34 }} onClick={() => setQty(Math.max(1, qty - 1))} aria-label="Меньше"><Minus size={16} /></button>
@@ -88,12 +89,12 @@ export default function Checkout() {
         </div>
 
         <section className="stack" style={{ gap: 10 }}>
-          <div className="h2">Получение</div>
-          <div className="option-list" role="radiogroup">
+          <div className="t-h2">Получение</div>
+          <div className="options" role="radiogroup">
             {delivery.map((d) => (
               <button key={d.id} role="radio" aria-checked={method === d.id} className={`option ${method === d.id ? 'active' : ''}`} onClick={() => setMethod(d.id)}>
                 <span className="radio" />
-                <span className="grow"><b>{d.label}</b><div className="small muted">{d.days ? `${d.days} ${d.days === 1 ? 'день' : 'дня'}` : 'сегодня после производства'}{d.free_from_minor ? ` · бесплатно от ${money(d.free_from_minor)}` : ''}</div></span>
+                <span className="grow"><b>{d.label}</b><div className="t-sm muted">{d.days ? `${d.days} ${d.days === 1 ? 'день' : 'дня'}` : 'сегодня после производства'}{d.free_from_minor ? ` · бесплатно от ${money(d.free_from_minor)}` : ''}</div></span>
                 <b className="num">{d.price_minor ? money(d.price_minor) : 'бесплатно'}</b>
               </button>
             ))}
@@ -102,41 +103,41 @@ export default function Checkout() {
         </section>
 
         <section className="stack" style={{ gap: 10 }}>
-          <div className="h2">Промокод</div>
+          <div className="t-h2">Промокод</div>
           {promo && q?.promo ? (
-            <div className="card row" style={{ background: 'var(--coral-50)', boxShadow: 'none' }}><Tag size={18} color="var(--coral)" /><span className="grow"><b>{q.promo.code}</b> · {q.promo.description}</span><button className="link small" onClick={() => setPromo(null)}>Убрать</button></div>
+            <div className="card row" style={{ background: 'var(--primary-soft)', boxShadow: 'none' }}><Tag size={18} color="var(--primary)" /><span className="grow"><b>{q.promo.code}</b> · {q.promo.description}</span><button className="link t-sm" onClick={() => setPromo(null)}>Убрать</button></div>
           ) : (
             <form className="row" onSubmit={(e) => { e.preventDefault(); if (promoInput.trim()) setPromo(promoInput.trim().toUpperCase()) }}>
               <input className="input grow" value={promoInput} onChange={(e) => setPromoInput(e.target.value)} placeholder="Например, PICPAC10" aria-label="Промокод" />
-              <button className="btn btn-dark">Применить</button>
+              <button className="btn btn-secondary">Применить</button>
             </form>
           )}
         </section>
 
         <section className="stack" style={{ gap: 10 }}>
-          <div className="h2">Оплата</div>
+          <div className="t-h2">Оплата</div>
           <div className="seg">
             <button className={pay === 'test_card' ? 'active' : ''} onClick={() => setPay('test_card')}><CreditCard size={15} /> Тест-карта</button>
             <button className={pay === 'test_erip' ? 'active' : ''} onClick={() => setPay('test_erip')}>ЕРИП (тест)</button>
           </div>
-          <div className="small muted row" style={{ gap: 6 }}><Lock size={14} /> Демо-режим: деньги не списываются</div>
+          <div className="t-sm muted row" style={{ gap: 6 }}><Lock size={14} /> Демо-режим: деньги не списываются</div>
         </section>
 
         {q && (
           <section className="card">
             {q.lines.map((l, i) => <div key={i} className="price-line"><span className="muted">{l.label}</span><span className="num">{money(l.amount_minor)}</span></div>)}
-            {q.discount_minor > 0 && <div className="price-line" style={{ color: 'var(--coral)' }}><span>Скидка</span><span className="num">−{money(q.discount_minor)}</span></div>}
+            {q.discount_minor > 0 && <div className="price-line" style={{ color: 'var(--primary-strong)' }}><span>Скидка</span><span className="num">−{money(q.discount_minor)}</span></div>}
             <div className="price-line"><span className="muted">Доставка</span><span className="num">{q.delivery_minor ? money(q.delivery_minor) : 'бесплатно'}</span></div>
             <div className="divider" style={{ margin: '8px 0 0' }} />
             <div className="price-total"><span>Итого</span><span className="num">{money(q.total_minor)}</span></div>
-            {members > 1 && <div className="row small" style={{ marginTop: 8, color: 'var(--green)' }}><Users size={15} /> Если разделить на {members}: по {money(Math.ceil(q.total_minor / members))}</div>}
-            <div className="small muted" style={{ marginTop: 6 }}>Производство {q.production_days} д. + доставка {q.delivery_days} д.</div>
+            {members > 1 && <div className="row t-sm" style={{ marginTop: 8, color: 'var(--text-2)' }}><Users size={15} /> Если разделить на {members}: по {money(Math.ceil(q.total_minor / members))}</div>}
+            <div className="t-sm muted" style={{ marginTop: 6 }}>Производство {q.production_days} д. + доставка {q.delivery_days} д.</div>
           </section>
         )}
-        {error && <div className="card" role="alert" style={{ background: 'var(--coral-50)', color: 'var(--coral-600)', boxShadow: 'none' }}>{error}</div>}
+        {error && <div className="card" role="alert" style={{ background: 'color-mix(in srgb, var(--danger) 12%, transparent)', color: 'var(--danger)', boxShadow: 'none' }}>{error}</div>}
         <Say who="robot">Перед печатью модератор ещё раз посмотрит макет. Статусы буду присылать сюда и пушем.</Say>
       </main>
-      <div className="fixed-cta">
+      <div className="bottom-cta">
         <button className="btn btn-primary btn-lg btn-block" disabled={busy || !q} onClick={submit}>
           {busy ? 'Оформляем…' : !online ? 'Нет сети — повторить' : `Заказать${q ? ` · ${money(q.total_minor)}` : ''}`}
         </button>

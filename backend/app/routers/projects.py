@@ -1,17 +1,20 @@
 from __future__ import annotations
 
+import copy
+
 import secrets
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from ..ai import engine as ai
 from ..audit import audit
 from ..db import get_db, utcnow
 from ..errors import ApiError
-from ..layout import MONTHS, TEMPLATES, auto_layout, curate, place_title, preflight
+from ..layout import MONTHS, TEMPLATES, auto_layout, curate, fit_faces, place_title, preflight
 from ..models import Photo, Product, Project, ProjectMember, User
 from ..security import current_user
 from ..services import can_access_project, photo_public
@@ -71,7 +74,8 @@ def create(body: CreateIn, request: Request, user: User = Depends(current_user),
     specs = product.specs or {}
     options = {"size": specs.get("sizes", [{}])[0].get("id"),
                "cover": (specs.get("covers") or [{}])[0].get("id"),
-               "paper": (specs.get("papers") or [{}])[0].get("id"), **body.options}
+               "paper": (specs.get("papers") or [{}])[0].get("id"),
+               "color": (specs.get("colors") or [{}])[0].get("id"), **body.options}
     project = Project(owner_id=user.id, product_id=product.id, title=body.title or product.title, options=options,
                       layout={"cover": None, "pages": []})
     db.add(project)
@@ -217,7 +221,34 @@ def project_preflight(project_id: str, user: User = Depends(current_user), db: S
     product = db.get(Product, p.product_id)
     photos = {x.id: x for x in db.query(Photo).filter(Photo.owner_id.isnot(None)).filter(
         Photo.id.in_(_layout_photo_ids(p.layout))).all()}
-    return preflight(product, p.options, p.layout, photos)
+    res = preflight(product, p.options, p.layout, photos)
+    from ..models import PhotoEvent
+    from ..services import photo_event
+    for i in res["issues"]:
+        if not i.get("photo_id") or i["code"] in ("repeated",):
+            continue
+        seen = db.query(PhotoEvent).filter_by(photo_id=i["photo_id"], kind="robot_flagged", project_id=p.id).all()
+        if not any((e.details or {}).get("code") == i["code"] for e in seen):
+            photo_event(db, i["photo_id"], "robot_flagged", f"Робот: {i['title']}", "robot",
+                        {"code": i["code"], "severity": i["severity"], "dpi": i.get("dpi"), "optional": i["severity"] != "critical"},
+                        project_id=p.id, user_id=user.id)
+    db.commit()
+    return res
+
+
+@router.post("/projects/{project_id}/fit-faces")
+def fit_faces_route(project_id: str, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Слежка за обрезом: сдвигает кадр каждой рамки так, чтобы лица были целиком."""
+    p = _get(db, user, project_id)
+    product = db.get(Product, p.product_id)
+    photos = {x.id: x for x in db.query(Photo).filter(Photo.id.in_(_layout_photo_ids(p.layout))).all()}
+    p.layout = fit_faces(copy.deepcopy(p.layout), product, p.options, photos)
+    flag_modified(p, "layout")
+    p.revision += 1
+    p.updated_at = utcnow()
+    audit(db, user, "project_fit_faces", "project", p.id, request=request)
+    db.commit()
+    return project_public(db, p)
 
 
 def _layout_photo_ids(layout: dict[str, Any]) -> list[str]:
@@ -242,7 +273,8 @@ def captions(project_id: str, request: Request, user: User = Depends(current_use
             pg["caption"] = caps[i]
     if res.get("title"):
         p.title = res["title"]
-    p.layout = dict(p.layout)
+    p.layout = copy.deepcopy(p.layout)
+    flag_modified(p, "layout")
     p.revision += 1
     audit(db, user, "ai_captions", "project", p.id, details=res.get("_meta", {}), request=request)
     db.commit()

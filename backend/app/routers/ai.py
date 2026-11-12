@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+
 import io
 from typing import Any, Optional
 
@@ -7,6 +9,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from .. import imaging
 from ..ai import engine as ai
@@ -16,7 +19,7 @@ from ..db import get_db, utcnow
 from ..errors import ApiError
 from ..models import AIProvider, AIToolSetting, Photo, Project, User
 from ..security import current_user
-from ..services import can_access_photo, can_access_project, create_photo, photo_public
+from ..services import can_access_photo, can_access_project, create_photo, photo_event, photo_public
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -91,14 +94,21 @@ def apply(photo_id: str, body: ApplyIn, request: Request, user: User = Depends(c
     new = create_photo(db, user if p.owner_id == user.id else db.get(User, p.owner_id), out.convert("RGB"),
                        p.filename, source="ai", taken_at=p.taken_at, place=p.place, project_id=p.project_id,
                        parent_id=p.parent_id or p.id, ai_tool=body.tool)
+    from ..ai.registry import TOOLS as _T
+    photo_event(db, p, "ai_applied", f"{_T[body.tool]['title']} → новая версия", "ai",
+                {"tool": body.tool, "params": body.params, "new_photo": new.id, "provider": meta["provider"],
+                 "model": meta["model"], "status": meta["status"], "duration_ms": meta["duration_ms"]}, user_id=user.id)
     swapped = 0
     revision = None
     if body.project_id and body.replace:
         project = db.get(Project, body.project_id)
         if project and can_access_project(db, user, project) and project.status == "draft":
-            layout = dict(project.layout)
-            swapped = _swap(layout, p.id, new.id)
+            layout = copy.deepcopy(project.layout)
+            root_id = p.parent_id or p.id
+            family = {root_id} | {x.id for x in db.query(Photo).filter(Photo.parent_id == root_id).all()}
+            swapped = sum(_swap(layout, fid, new.id) for fid in family if fid != new.id)
             project.layout = layout
+            flag_modified(project, "layout")
             project.revision += 1
             project.updated_at = utcnow()
             revision = project.revision
@@ -118,10 +128,12 @@ def revert(photo_id: str, project_id: str, request: Request, user: User = Depend
     project = db.get(Project, project_id)
     if not project or not can_access_project(db, user, project):
         raise ApiError(404, "project_not_found", "Проект не найден")
-    layout = dict(project.layout)
+    layout = copy.deepcopy(project.layout)
     n = _swap(layout, p.id, p.parent_id)
     project.layout = layout
+    flag_modified(project, "layout")
     project.revision += 1
+    photo_event(db, p, "reverted", "Возврат к оригиналу", "user", {"to": p.parent_id}, project_id=project_id, user_id=user.id)
     audit(db, user, "ai_revert", "photo", p.id, details={"to": p.parent_id}, request=request)
     db.commit()
     return {"photo": photo_public(db.get(Photo, p.parent_id)), "replaced": n, "project_revision": project.revision}

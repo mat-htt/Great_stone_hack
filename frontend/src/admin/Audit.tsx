@@ -22,10 +22,10 @@ export default function Audit() {
           <thead><tr><th>Время</th><th>Пользователь</th><th>Роль</th><th>Действие</th><th>Объект</th><th>Результат</th><th>Детали</th></tr></thead>
           <tbody>{items.map((a) => (
             <tr key={a.id}>
-              <td className="small">{fmtDate(a.created_at, true)}</td><td className="small">{a.user}</td><td className="small">{a.role}</td>
-              <td><code className="kbd">{a.action}</code></td><td className="small">{a.object}</td>
-              <td><span className={`pill ${a.result === 'ok' ? 'pill-ok' : a.result === 'denied' ? 'pill-bad' : 'pill-warn'}`}>{a.result}</span></td>
-              <td className="tiny muted" style={{ maxWidth: 280, wordBreak: 'break-word' }}>{Object.keys(a.details || {}).length ? JSON.stringify(a.details) : ''}</td>
+              <td className="t-sm">{fmtDate(a.created_at, true)}</td><td className="t-sm">{a.user}</td><td className="t-sm">{a.role}</td>
+              <td><code className="kbd">{a.action}</code></td><td className="t-sm">{a.object}</td>
+              <td><span className={`badge ${a.result === 'ok' ? 'b-ok' : a.result === 'denied' ? 'b-bad' : 'b-warn'}`}>{a.result}</span></td>
+              <td className="t-xs muted" style={{ maxWidth: 280, wordBreak: 'break-word' }}>{Object.keys(a.details || {}).length ? JSON.stringify(a.details) : ''}</td>
             </tr>
           ))}</tbody>
         </table>

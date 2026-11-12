@@ -37,8 +37,42 @@ ROBOT_LINES = {
 }
 
 
+def photo_advice(p: Photo) -> list[dict[str, Any]]:
+    """Рекомендации по фото. Всегда необязательные: пользователь может принять или оставить как есть."""
+    if p.source == "ai":
+        return []
+    out: list[dict[str, Any]] = []
+    sharp = imaging.sharpness_norm(p.sharpness)
+    if sharp < 0.14:
+        out.append({"code": "blurry", "who": "robot", "tool": "text_clarity", "params": {},
+                    "title": "Кадр немного смазан", "text": "Могу повысить резкость. Если так задумано — оставим."})
+    if min(p.width, p.height) < 1400:
+        out.append({"code": "lowres", "who": "robot", "tool": "upscale", "params": {"scale": 2 if min(p.width, p.height) > 900 else 4},
+                    "title": "Мало пикселей для крупной печати", "text": "Нейросеть увеличит разрешение. Для маленьких форматов можно не трогать."})
+    if p.brightness < 55:
+        out.append({"code": "dark", "who": "robot", "tool": "auto_enhance", "params": {},
+                    "title": "Тёмный кадр", "text": "В печати тени станут глубже. Предлагаю мягко осветлить."})
+    if p.faces and sharp >= 0.14 and len(out) == 0:
+        out.append({"code": "portrait", "who": "cat", "tool": "portrait", "params": {},
+                    "title": "Красивый портрет", "text": "Могу сделать лёгкую ретушь кожи — по желанию."})
+    return out
+
+
+def photo_event(db: Session, photo: Photo | str, kind: str, title: str, actor: str = "system",
+                details: Optional[dict[str, Any]] = None, project_id: Optional[str] = None,
+                user_id: Optional[int] = None) -> None:
+    from .models import PhotoEvent
+    if isinstance(photo, str):
+        photo = db.get(Photo, photo)
+        if photo is None:
+            return
+    db.add(PhotoEvent(photo_id=photo.id, root_id=photo.parent_id or photo.id, project_id=project_id or photo.project_id,
+                      user_id=user_id, kind=kind, actor=actor, title=title[:200], details=details or {}))
+
+
 def photo_public(p: Photo) -> dict[str, Any]:
     return {
+        "advice": photo_advice(p),
         "id": p.id, "filename": p.filename, "width": p.width, "height": p.height, "mime": p.mime,
         "size_bytes": p.size_bytes, "taken_at": p.taken_at.isoformat() if p.taken_at else None, "place": p.place,
         "sharpness": round(imaging.sharpness_norm(p.sharpness), 3), "brightness": p.brightness,
@@ -66,6 +100,16 @@ def create_photo(db: Session, owner: User, img: Image.Image, filename: str, *, s
     photo.path, photo.thumb_path, photo.size_bytes = rel, rel_t, size
     if max(img.size) > imaging.MAX_SIDE:
         photo.width, photo.height = Image.open(imaging.MEDIA_DIR / rel).size
+    if source != "ai":
+        photo_event(db, photo, "uploaded", f"Загружено: {photo.width}×{photo.height}", "user",
+                    {"source": source, "size_bytes": photo.size_bytes}, user_id=owner.id)
+        photo_event(db, photo, "analyzed", "Робот проанализировал кадр", "robot",
+                    {"sharpness": round(imaging.sharpness_norm(photo.sharpness), 2), "brightness": photo.brightness,
+                     "faces": len(photo.faces or []), "face_model": info.get("face_model"), "score": photo.score,
+                     "phash": photo.phash})
+        for a in photo_advice(photo):
+            photo_event(db, photo, "advice", f"{'Кот' if a['who'] == 'cat' else 'Робот'}: {a['title']}", a["who"],
+                        {"code": a["code"], "tool": a["tool"], "optional": True})
     return photo
 
 
@@ -84,8 +128,39 @@ def can_access_photo(db: Session, user: User, photo: Photo) -> bool:
     return False
 
 
-def notify(db: Session, user_id: int, title: str, body: str, link: str = "", mascot: str = "robot") -> None:
+def notify(db: Session, user_id: int, title: str, body: str, link: str = "", mascot: str = "robot",
+           telegram_text: Optional[str] = None) -> None:
+    """Уведомление в приложении + копия в Telegram, если клиент подключил бота (иначе ничего не происходит)."""
     db.add(Notification(user_id=user_id, title=title, body=body, link=link, mascot=mascot))
+    from . import telegram
+    telegram.notify_user(db, user_id, title, telegram_text or body, link)
+
+
+def _fmt_date(d: Optional[datetime]) -> str:
+    if not d:
+        return ""
+    months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября",
+              "ноября", "декабря"]
+    local = d + timedelta(hours=3)  # Минск, UTC+3
+    return f"{local.day} {months[local.month - 1]}"
+
+
+def order_telegram_text(order: Order, status: str, stage: Optional[str], message: str) -> str:
+    """Текст для бота: этап, что дальше и когда ждать."""
+    lines = [message or ROBOT_LINES.get(stage or status, "")]
+    eta = _fmt_date(order.eta)
+    if status == "production" and eta:
+        lines.append(f"Ориентировочно будет готов к {eta}.")
+    if status == "shipped":
+        if order.delivery_method == "pickup":
+            lines = ["Заказ готов к выдаче! 🎉 Заберите его в пункте picPac — назовите номер заказа."]
+        else:
+            lines = ["Заказ в доставке 🚚" + (f" Ждите {eta}." if eta else "")]
+            if order.track_number:
+                lines.append(f"Трек-номер: {order.track_number}")
+    if status == "needs_fix":
+        lines.append("Откройте заказ в приложении, чтобы поправить макет.")
+    return "\n".join(x for x in lines if x)
 
 
 def add_event(db: Session, order: Order, status: str, stage: Optional[str], actor: str, message: str = "",
@@ -125,7 +200,7 @@ def set_status(db: Session, order: Order, status: str, stage: Optional[str], act
     if notify_user:
         label = STAGE_LABEL.get(stage) if stage else STATUS_LABEL.get(status)
         notify(db, order.user_id, f"Заказ {order.number}: {label}", message or ROBOT_LINES.get(stage or status, ""),
-               link=f"/orders/{order.id}")
+               link=f"/orders/{order.id}", telegram_text=order_telegram_text(order, status, stage, message))
 
 
 def order_public(order: Order, with_events: bool = True) -> dict[str, Any]:

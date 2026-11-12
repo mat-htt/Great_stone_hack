@@ -1,0 +1,360 @@
+{
+ "designs": [
+  {
+   "id": "xmas-family",
+   "name": "Рождество семьи",
+   "tags": [
+    "новый год",
+    "рождество",
+    "семья"
+   ],
+   "bg": "/designs/xmas-family.svg",
+   "art": true,
+   "page": "#FFFDF8",
+   "ink": "#B02A2A",
+   "accent": "#C92A2A",
+   "font": "script",
+   "frame": "round",
+   "inset": 0.1,
+   "decor": "none"
+  },
+  {
+   "id": "neon-night",
+   "name": "Неоновая ночь",
+   "tags": [
+    "новый год",
+    "праздник",
+    "молодёжь"
+   ],
+   "bg": "/designs/neon-night.svg",
+   "art": true,
+   "page": "#2B2D42",
+   "ink": "#F8F9FA",
+   "accent": "#C0EB75",
+   "font": "hand",
+   "frame": "thin",
+   "inset": 0.08,
+   "decor": "none"
+  },
+  {
+   "id": "happy-new-year",
+   "name": "Счастливый Новый год",
+   "tags": [
+    "новый год",
+    "семья"
+   ],
+   "bg": "/designs/happy-new-year.svg",
+   "art": true,
+   "page": "#F4E7E2",
+   "ink": "#B02A2A",
+   "accent": "#1F6E43",
+   "font": "script",
+   "frame": "white",
+   "inset": 0.12,
+   "decor": "none"
+  },
+  {
+   "id": "bauble-pattern",
+   "name": "Ёлочные шары",
+   "tags": [
+    "новый год",
+    "паттерн"
+   ],
+   "bg": "/designs/bauble-pattern.svg",
+   "art": true,
+   "page": "#4A2A2A",
+   "ink": "#F6E7C8",
+   "accent": "#E8875B",
+   "font": "script",
+   "frame": "white",
+   "inset": 0.14,
+   "decor": "none"
+  },
+  {
+   "id": "christmas-time",
+   "name": "Christmas time",
+   "tags": [
+    "новый год",
+    "рождество"
+   ],
+   "bg": "/designs/christmas-time.svg",
+   "art": true,
+   "page": "#2F1B14",
+   "ink": "#F8EBD0",
+   "accent": "#D4AF37",
+   "font": "script",
+   "frame": "none",
+   "inset": 0.07,
+   "decor": "none"
+  },
+  {
+   "id": "grad-neon",
+   "name": "Выпуск · неон",
+   "tags": [
+    "выпускной",
+    "школа",
+    "11 класс"
+   ],
+   "bg": "/designs/grad-neon.svg",
+   "art": true,
+   "page": "#151A63",
+   "ink": "#FFFFFF",
+   "accent": "#4FD8FF",
+   "font": "display",
+   "frame": "neon",
+   "inset": 0.12,
+   "decor": "none"
+  },
+  {
+   "id": "grad-player",
+   "name": "Выпускной · плеер",
+   "tags": [
+    "выпускной",
+    "школа",
+    "9 класс"
+   ],
+   "bg": "/designs/grad-player.svg",
+   "art": true,
+   "page": "#7B1FA2",
+   "ink": "#FFFFFF",
+   "accent": "#FFFFFF",
+   "font": "sans",
+   "frame": "white",
+   "inset": 0.1,
+   "decor": "none"
+  },
+  {
+   "id": "kindergarten",
+   "name": "Детский сад",
+   "tags": [
+    "выпускной",
+    "детский сад",
+    "дети"
+   ],
+   "bg": "/designs/kindergarten.svg",
+   "art": true,
+   "page": "#FFF9F0",
+   "ink": "#5F3DC4",
+   "accent": "#F76707",
+   "font": "hand",
+   "frame": "polaroid",
+   "inset": 0.13,
+   "decor": "none"
+  },
+  {
+   "id": "magic",
+   "name": "Magic",
+   "tags": [
+    "дети",
+    "праздник",
+    "школа"
+   ],
+   "bg": "/designs/magic.svg",
+   "art": true,
+   "page": "#CDBFA6",
+   "ink": "#7B1E22",
+   "accent": "#B03A2E",
+   "font": "display",
+   "frame": "white",
+   "inset": 0.1,
+   "decor": "none"
+  },
+  {
+   "id": "autumn",
+   "name": "Наша осень",
+   "tags": [
+    "осень",
+    "семья",
+    "прогулка"
+   ],
+   "bg": "/designs/autumn.svg",
+   "art": true,
+   "page": "#EFE6DA",
+   "ink": "#5C4033",
+   "accent": "#B08968",
+   "font": "display",
+   "frame": "none",
+   "inset": 0.1,
+   "decor": "none"
+  },
+  {
+   "id": "meadow",
+   "name": "Воспоминания · луг",
+   "tags": [
+    "лето",
+    "семья",
+    "свадьба"
+   ],
+   "bg": "/designs/meadow.svg",
+   "art": true,
+   "page": "#F7F1E3",
+   "ink": "#5E7038",
+   "accent": "#E9B949",
+   "font": "script",
+   "frame": "none",
+   "inset": 0.1,
+   "decor": "none"
+  },
+  {
+   "id": "cinema",
+   "name": "Наше кино",
+   "tags": [
+    "молодёжь",
+    "друзья",
+    "путешествия"
+   ],
+   "bg": "/designs/cinema.svg",
+   "art": true,
+   "page": "#1A1A1A",
+   "ink": "#F8F0E3",
+   "accent": "#E8590C",
+   "font": "display",
+   "frame": "thin",
+   "inset": 0.1,
+   "decor": "none"
+  },
+  {
+   "id": "for-mom",
+   "name": "Любимой маме",
+   "tags": [
+    "мама",
+    "семья",
+    "праздник"
+   ],
+   "bg": "/designs/for-mom.svg",
+   "art": true,
+   "page": "#FBF7F0",
+   "ink": "#4A4A4A",
+   "accent": "#E599B6",
+   "font": "script",
+   "frame": "circle",
+   "inset": 0.14,
+   "decor": "none"
+  },
+  {
+   "id": "archive",
+   "name": "Итоги года",
+   "tags": [
+    "итоги года",
+    "друзья",
+    "молодёжь"
+   ],
+   "bg": "/designs/archive.svg",
+   "art": true,
+   "page": "#FFFFFF",
+   "ink": "#1A1A1A",
+   "accent": "#1A1A1A",
+   "font": "hand",
+   "frame": "polaroid",
+   "inset": 0.12,
+   "decor": "none"
+  },
+  {
+   "id": "travel",
+   "name": "Travel",
+   "tags": [
+    "путешествия",
+    "море",
+    "отпуск"
+   ],
+   "bg": "/designs/travel.svg",
+   "art": true,
+   "page": "#FAFAF7",
+   "ink": "#1C3D7A",
+   "accent": "#C92A2A",
+   "font": "display",
+   "frame": "none",
+   "inset": 0.1,
+   "decor": "none"
+  },
+  {
+   "id": "moments",
+   "name": "Moments · акварель",
+   "tags": [
+    "свадьба",
+    "лето",
+    "нежный"
+   ],
+   "bg": "/designs/moments.svg",
+   "art": true,
+   "page": "#F7F3FB",
+   "ink": "#5B4B8A",
+   "accent": "#9C88D9",
+   "font": "display",
+   "frame": "white",
+   "inset": 0.13,
+   "decor": "none"
+  },
+  {
+   "id": "retro-stamp",
+   "name": "Ретро-открытка",
+   "tags": [
+    "новый год",
+    "ретро",
+    "открытка"
+   ],
+   "bg": "/designs/retro-stamp.svg",
+   "art": true,
+   "page": "#F4EAD5",
+   "ink": "#B02A2A",
+   "accent": "#2F5D62",
+   "font": "script",
+   "frame": "white",
+   "inset": 0.12,
+   "decor": "none"
+  },
+  {
+   "id": "wedding-eucalyptus",
+   "name": "Свадьба · эвкалипт",
+   "tags": [
+    "свадьба",
+    "любовь"
+   ],
+   "bg": "/designs/wedding-eucalyptus.svg",
+   "art": true,
+   "page": "#FBF9F4",
+   "ink": "#5A6B4A",
+   "accent": "#9CAF88",
+   "font": "script",
+   "frame": "arch",
+   "inset": 0.13,
+   "decor": "none"
+  },
+  {
+   "id": "baby-minimal",
+   "name": "Малыш · минимал",
+   "tags": [
+    "дети",
+    "малыш",
+    "семья"
+   ],
+   "bg": "/designs/baby-minimal.svg",
+   "art": true,
+   "page": "#FFFFFF",
+   "ink": "#343A40",
+   "accent": "#ADB5BD",
+   "font": "display",
+   "frame": "none",
+   "inset": 0.08,
+   "decor": "none"
+  },
+  {
+   "id": "collage-mustard",
+   "name": "Коллаж · горчица",
+   "tags": [
+    "стиль",
+    "друзья",
+    "молодёжь"
+   ],
+   "bg": "/designs/collage-mustard.svg",
+   "art": true,
+   "page": "#F5F2EA",
+   "ink": "#2D3A2E",
+   "accent": "#C9A227",
+   "font": "display",
+   "frame": "none",
+   "inset": 0.1,
+   "decor": "none"
+  }
+ ]
+}

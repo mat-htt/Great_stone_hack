@@ -9,7 +9,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..config import LOCAL_LLM_MODEL, OLLAMA_URL
+
 IMAGE = "image"
+LLM_DEFAULT = {"command", "captions", "support_reply"}  # по умолчанию идут в локальную Qwen3
 TEXT = "text"
 
 TOOLS: dict[str, dict[str, Any]] = {
@@ -87,12 +90,13 @@ TOOLS: dict[str, dict[str, Any]] = {
 }
 
 PROVIDER_PRESETS: list[dict[str, Any]] = [
-    {"id": "builtin", "title": "Встроенный движок picPac (CPU)", "kind": "builtin",
-     "location": "Сервер picPac, данные не покидают контур", "notes": "OpenCV + NumPy, без GPU и интернета"},
-    {"id": "ollama", "title": "Ollama · Qwen3 (свой сервер)", "kind": "openai",
-     "base_url": "http://ollama:11434/v1", "default_model": "qwen3:8b", "vision_model": "qwen2.5vl:7b",
-     "location": "Собственный сервер компании", "enabled": False,
-     "notes": "docker compose --profile local-ai up — поднимает Ollama рядом с приложением"},
+    {"id": "builtin", "title": "Встроенный движок picPac", "kind": "builtin",
+     "location": "Сервер picPac, данные не покидают контур",
+     "notes": "Нейросети на CPU: YuNet (лица), FSRCNN (увеличение), U²-Net (фон) + OpenCV"},
+    {"id": "ollama", "title": "Qwen3 · свой сервер (Ollama)", "kind": "openai",
+     "base_url": OLLAMA_URL, "default_model": LOCAL_LLM_MODEL, "vision_model": "qwen2.5vl:3b",
+     "location": "Собственный сервер компании", "enabled": True,
+     "notes": "Поднимается в docker compose рядом с приложением; работает на CPU"},
     {"id": "vllm", "title": "vLLM · Qwen3 (GPU-кластер)", "kind": "openai",
      "base_url": "http://vllm:8000/v1", "default_model": "Qwen/Qwen3-14B", "vision_model": "Qwen/Qwen2.5-VL-7B-Instruct",
      "location": "Собственный GPU-сервер", "enabled": False},

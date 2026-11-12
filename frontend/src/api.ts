@@ -4,16 +4,19 @@ export type Role = 'client' | 'operator' | 'admin'
 export interface User { id: number; email: string | null; name: string; role: Role; is_guest: boolean }
 export interface SizeOpt { id: string; label: string; w_cm: number; h_cm: number; mult: number }
 export interface Opt { id: string; label: string; add_minor?: number }
+export interface Advice { code: string; who: 'cat' | 'robot'; tool: string; params: any; title: string; text: string }
+export interface Category { id: string; name: string; emoji: string }
 export interface Product {
-  id: string; title: string; subtitle: string; category: string; kind: 'book' | 'prints' | 'wall' | 'calendar'
+  id: string; title: string; subtitle: string; category: string; kind: 'book' | 'prints' | 'single' | 'card' | 'calendar'; mockup: string
   description: string; base_price_minor: number; currency: string; production_days: number; badge: string; accent: string
-  specs: { sizes: SizeOpt[]; covers?: Opt[]; papers?: Opt[]; pages?: { min: number; max: number; included: number; extra_spread_minor: number }
-    photos?: { min: number; max: number }; requirements?: string; shared?: boolean }
+  specs: { sizes: SizeOpt[]; covers?: Opt[]; papers?: Opt[]; colors?: (Opt & { hex: string })[]; pages?: { min: number; max: number; included: number; extra_spread_minor: number }
+    photos?: { min: number; max: number }; requirements?: string; shared?: boolean; template?: string }
 }
 export interface Photo {
   id: string; filename: string; width: number; height: number; taken_at: string | null; place: string | null
   sharpness: number; brightness: number; faces: { x: number; y: number; w: number; h: number }[]; score: number
   source: string; ai_tool: string | null; parent_id: string | null; url: string; thumb: string; owner_id: number; project_id: string | null
+  advice: Advice[]
 }
 export interface Slot { photo_id: string | null; crop: { x: number; y: number; zoom: number } }
 export interface Page { id: string; template: string; slots: Slot[]; caption?: string }

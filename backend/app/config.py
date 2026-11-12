@@ -11,6 +11,11 @@ MEDIA_DIR = DATA_DIR / "media"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 
+CONFIG_DATA = Path(__file__).resolve().parent / "config_data"
+MODELS_DIR = Path(os.getenv("MODELS_DIR", str(BASE_DIR / "models")))
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434/v1")
+LOCAL_LLM_MODEL = os.getenv("LOCAL_LLM_MODEL", "qwen2.5:1.5b")
+
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{(DATA_DIR / 'picpac.db').as_posix()}")
 
 

@@ -18,7 +18,7 @@ from ..layout import cluster_memories
 from ..models import Photo, Project, User
 from ..security import current_user
 from ..seed import gallery
-from ..services import can_access_photo, can_access_project, create_photo, photo_public
+from ..services import can_access_photo, can_access_project, create_photo, photo_event, photo_public
 
 router = APIRouter(prefix="/api", tags=["photos"])
 ALLOWED = {"JPEG": "image/jpeg", "PNG": "image/png", "MPO": "image/jpeg"}
@@ -126,6 +126,15 @@ def media(photo_id: str, size: str = Query("full"), user: User = Depends(current
     if not p or not can_access_photo(db, user, p):
         raise ApiError(404, "photo_not_found", "Фото не найдено")
     rel = p.thumb_path if size == "thumb" else p.path
+    if size == "preview":  # для 3D-просмотра: до 1400 px, кэшируется рядом с оригиналом
+        prev = MEDIA_DIR / (str(p.path).rsplit(".", 1)[0] + "_p.jpg")
+        if not prev.exists():
+            from PIL import Image
+            with Image.open(MEDIA_DIR / p.path) as im:
+                im = im.convert("RGB")
+                im.thumbnail((1400, 1400), Image.Resampling.LANCZOS)
+                im.save(prev, "JPEG", quality=86, optimize=True)
+        return FileResponse(prev, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
     return FileResponse(MEDIA_DIR / rel, media_type="image/jpeg",
                         headers={"Cache-Control": "private, max-age=86400"})
 
@@ -174,3 +183,25 @@ def import_gallery(body: ImportIn, request: Request, user: User = Depends(curren
     audit(db, user, "gallery_import", "project", body.project_id or "-", details={"count": len(out)}, request=request)
     db.commit()
     return {"photos": [photo_public(p) for p in out], "rejected": []}
+
+
+class AdviceIn(BaseModel):
+    code: str
+    decision: str  # accepted | declined
+
+
+@router.post("/photos/{photo_id}/advice")
+def advice_decision(photo_id: str, body: AdviceIn, request: Request, user: User = Depends(current_user),
+                    db: Session = Depends(get_db)):
+    """Пользователь принял или отклонил рекомендацию Кота/Робота. Отказ — нормальный сценарий."""
+    p = db.get(Photo, photo_id)
+    if not p or not can_access_photo(db, user, p):
+        raise ApiError(404, "photo_not_found", "Фото не найдено")
+    accepted = body.decision == "accepted"
+    photo_event(db, p, "advice_accepted" if accepted else "advice_declined",
+                "Пользователь принял совет" if accepted else "Пользователь оставил как есть", "user",
+                {"code": body.code}, user_id=user.id)
+    audit(db, user, "advice_" + ("accept" if accepted else "decline"), "photo", photo_id, details={"code": body.code},
+          request=request)
+    db.commit()
+    return {"ok": True}

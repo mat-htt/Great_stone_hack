@@ -16,18 +16,18 @@ export default function Decisions() {
   return (
     <div>
       <Head title="Реестр решений" sub="От сигнала к действию: проблема → причина → действие → владелец → срок. Связано с KPI «Пульса»."
-        right={<button className="btn btn-dark btn-sm" onClick={() => setEdit({ kpi: '', problem: '', priority: 'medium', status: 'new' })}><Plus size={15} /> Решение</button>} />
+        right={<button className="btn btn-secondary btn-sm" onClick={() => setEdit({ kpi: '', problem: '', priority: 'medium', status: 'new' })}><Plus size={15} /> Решение</button>} />
       <div className="panel" style={{ padding: 0, overflow: 'auto' }}>
         <table className="t">
           <thead><tr><th>Проблема</th><th>Действие</th><th>Владелец</th><th>Срок</th><th>Приоритет</th><th>Статус</th></tr></thead>
           <tbody>
             {items.map((d) => (
               <tr key={d.id} onClick={() => setEdit(d)} style={{ cursor: 'pointer' }}>
-                <td><b>{d.problem}</b><div className="tiny muted">{d.kpi} · {d.cause}</div></td>
-                <td className="small">{d.action || '—'}</td><td className="small">{d.owner || '—'}</td>
-                <td className="small">{d.due ? fmtDate(d.due) : '—'}</td>
-                <td><span className={`pill ${d.priority === 'high' ? 'pill-bad' : d.priority === 'medium' ? 'pill-warn' : 'pill-soft'}`}>{PRIO[d.priority]}</span></td>
-                <td><span className={`pill ${d.status === 'done' ? 'pill-ok' : 'pill-info'}`}>{STATUS[d.status]}</span></td>
+                <td><b>{d.problem}</b><div className="t-xs muted">{d.kpi} · {d.cause}</div></td>
+                <td className="t-sm">{d.action || '—'}</td><td className="t-sm">{d.owner || '—'}</td>
+                <td className="t-sm">{d.due ? fmtDate(d.due) : '—'}</td>
+                <td><span className={`badge ${d.priority === 'high' ? 'b-bad' : d.priority === 'medium' ? 'b-warn' : 'b-soft'}`}>{PRIO[d.priority]}</span></td>
+                <td><span className={`badge ${d.status === 'done' ? 'b-ok' : 'b-info'}`}>{STATUS[d.status]}</span></td>
               </tr>
             ))}
           </tbody>
@@ -54,7 +54,7 @@ export function DecisionForm({ initial, onDone }: { initial: any; onDone: () => 
   const F = (k: string, label: string) => <div className="field"><label>{label}</label><input className="input" value={f[k] || ''} onChange={(e) => setF({ ...f, [k]: e.target.value })} /></div>
   return (
     <form className="stack" onSubmit={(e) => { e.preventDefault(); save() }}>
-      <div className="h2">{initial.id ? 'Карточка решения' : 'Новое решение'}</div>
+      <div className="t-h2">{initial.id ? 'Карточка решения' : 'Новое решение'}</div>
       {F('problem', 'Проблема')}{F('impact', 'Влияние')}{F('cause', 'Причина')}{F('action', 'Действие')}{F('owner', 'Владелец')}
       <div className="row">
         <div className="field grow"><label>Срок</label><input className="input" type="date" value={f.due} onChange={(e) => setF({ ...f, due: e.target.value })} /></div>
@@ -63,7 +63,7 @@ export function DecisionForm({ initial, onDone }: { initial: any; onDone: () => 
       </div>
       <button className="btn btn-primary btn-block">Сохранить</button>
       {initial.history?.length > 0 && (
-        <div className="stack small" style={{ gap: 4 }}><b>История</b>{initial.history.slice().reverse().map((h: any, i: number) => <div key={i} className="muted">{fmtDate(h.at, true)} · {h.by} · {h.change}</div>)}</div>
+        <div className="stack t-sm" style={{ gap: 4 }}><b>История</b>{initial.history.slice().reverse().map((h: any, i: number) => <div key={i} className="muted">{fmtDate(h.at, true)} · {h.by} · {h.change}</div>)}</div>
       )}
     </form>
   )

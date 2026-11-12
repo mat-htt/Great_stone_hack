@@ -1,44 +1,53 @@
-import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
-import { Clock } from 'lucide-react'
-import { api, money, type Product } from '../api'
-import { TabBar, TopBar } from '../components/ui'
-import { ProductArt } from './Home'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Search } from 'lucide-react'
+import { api, money, type Category, type Product } from '../api'
+import { Mockup, PHOTO, shotFor } from '../components/Mockup'
+import { Dock, TopBar } from '../components/ui'
 
 export default function Catalog() {
+  const [params, setParams] = useSearchParams()
   const [items, setItems] = useState<Product[] | null>(null)
-  const [error, setError] = useState('')
-  const [cat, setCat] = useState('Все')
-  useEffect(() => { api<{ items: Product[] }>('/api/catalog').then((r) => setItems(r.items)).catch((e) => setError(e.message)) }, [])
-  const cats = ['Все', ...Array.from(new Set((items || []).map((p) => p.category)))]
-  const shown = (items || []).filter((p) => cat === 'Все' || p.category === cat)
+  const [cats, setCats] = useState<Category[]>([])
+  const [q, setQ] = useState('')
+  const [err, setErr] = useState('')
+  const cat = params.get('c') || 'all'
+  useEffect(() => { api<{ items: Product[]; categories: Category[] }>('/api/catalog').then((r) => { setItems(r.items); setCats(r.categories) }).catch((e) => setErr(e.message)) }, [])
+  const shown = useMemo(() => (items || []).filter((p) => (cat === 'all' || p.category === cat) &&
+    (!q || (p.title + p.subtitle).toLowerCase().includes(q.toLowerCase()))), [items, cat, q])
+
   return (
-    <div className="phone">
-      <TopBar title="Каталог" left />
-      <main className="page">
-        <div className="hscroll" style={{ paddingTop: 0 }}>
-          {cats.map((c) => <button key={c} className={`chip ${c === cat ? 'active' : ''}`} onClick={() => setCat(c)}>{c}</button>)}
+    <div className="screen">
+      <TopBar title={<span className="t-h1">Каталог</span>} left />
+      <main className="content">
+        <label className="search" style={{ cursor: 'text' }}><Search size={20} />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Кружка, фотокнига, открытка…" aria-label="Поиск по каталогу"
+            style={{ border: 0, background: 'none', outline: 'none', flex: 1, fontSize: 16, color: 'var(--text)' }} />
+        </label>
+        <div className="hscroll" style={{ marginTop: 14 }}>
+          <button className={`chip ${cat === 'all' ? 'active' : ''}`} onClick={() => setParams({})}>Всё</button>
+          {cats.map((c) => <button key={c.id} className={`chip ${cat === c.id ? 'active' : ''}`} onClick={() => setParams({ c: c.id })}>{c.name}</button>)}
         </div>
-        {error && <div className="card pill-bad" role="alert">{error}</div>}
-        {!items && !error && <div className="grid2" style={{ marginTop: 8 }}>{[0, 1, 2, 3].map((i) => <div key={i} className="skeleton" style={{ height: 220 }} />)}</div>}
-        <div className="grid2" style={{ marginTop: 8 }}>
-          {shown.map((p, i) => (
-            <motion.div key={p.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-              <Link to={`/catalog/${p.id}`} style={{ display: 'block' }}>
-                <ProductArt product={p} height={168} />
-                <div className="h3" style={{ marginTop: 10 }}>{p.title}</div>
-                <div className="small muted" style={{ minHeight: 36 }}>{p.subtitle}</div>
-                <div className="between" style={{ marginTop: 4 }}>
-                  <b>{p.kind === 'prints' ? `от ${money(p.base_price_minor)}/шт` : `от ${money(p.base_price_minor)}`}</b>
-                  <span className="small muted row" style={{ gap: 4 }}><Clock size={13} />{p.production_days} д.</span>
-                </div>
-              </Link>
-            </motion.div>
+        {err && <div className="card b-bad" role="alert">{err}</div>}
+        <div className="grid2" style={{ marginTop: 4 }}>
+          {!items && !err && [0, 1, 2, 3].map((i) => <div key={i} className="skeleton" style={{ height: 230 }} />)}
+          {shown.map((p) => (
+            <Link key={p.id} to={`/catalog/${p.id}`} className="card p0" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div className="center" style={{ height: 150, background: 'radial-gradient(90% 90% at 50% 100%, var(--primary-soft), var(--surface-2))', position: 'relative' }}>
+                {PHOTO[p.id] ? <img src={PHOTO[p.id]} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} /> : <Mockup kind={p.mockup} src={shotFor(p.id)} size={112} />}
+                {p.badge && <span className="badge b-primary" style={{ position: 'absolute', top: 10, left: 10 }}>{p.badge}</span>}
+              </div>
+              <div style={{ padding: '12px 14px 14px' }}>
+                <div className="t-h3" style={{ fontSize: 15.5 }}>{p.title}</div>
+                <div className="t-xs muted" style={{ minHeight: 32, marginTop: 2 }}>{p.subtitle}</div>
+                <div style={{ fontWeight: 800, marginTop: 6 }}>от {money(p.base_price_minor)}{p.kind === 'prints' ? '/шт' : ''}</div>
+              </div>
+            </Link>
           ))}
         </div>
+        {items && !shown.length && <div className="empty muted">Ничего не нашли — попробуйте другое слово</div>}
       </main>
-      <TabBar />
+      <Dock />
     </div>
   )
 }

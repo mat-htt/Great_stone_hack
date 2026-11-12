@@ -1,0 +1,26 @@
+{
+  "_comment": "Дизайн-шаблоны для фотокниг, открыток и календарей. Поля: фон страницы, цвет текста, акцент, шрифт подписей (sans | serif | hand), рамка фото (none | thin | white | polaroid | round), декор (none | corners | tape | stars | leaves | hearts | snow | confetti | film), поводы (tags).",
+  "templates": [
+    {"id": "clean", "name": "Чистый лист", "tags": ["Все", "Минимализм"], "page": "#FFFFFF", "ink": "#1A1A1A", "accent": "#1A1A1A", "font": "sans", "frame": "none", "decor": "none"},
+    {"id": "gallery", "name": "Галерея", "tags": ["Все", "Минимализм", "Путешествия"], "page": "#F6F5F2", "ink": "#2B2B2B", "accent": "#9C8F7A", "font": "serif", "frame": "thin", "decor": "none"},
+    {"id": "noir", "name": "Ночь", "tags": ["Все", "Минимализм"], "page": "#121214", "ink": "#F2F2F2", "accent": "#C9A86A", "font": "serif", "frame": "none", "decor": "none"},
+    {"id": "wedding-ivory", "name": "Свадьба · Айвори", "tags": ["Свадьба", "Влюблённым"], "page": "#FBF7F0", "ink": "#5B4B3A", "accent": "#C7A26B", "font": "serif", "frame": "white", "decor": "corners"},
+    {"id": "wedding-garden", "name": "Свадьба · Сад", "tags": ["Свадьба", "Весна"], "page": "#F3F6F0", "ink": "#3D5240", "accent": "#7FA27A", "font": "hand", "frame": "round", "decor": "leaves"},
+    {"id": "love", "name": "Влюблённым", "tags": ["Влюблённым", "Праздники"], "page": "#FFF1F3", "ink": "#7A2840", "accent": "#E8466B", "font": "hand", "frame": "white", "decor": "hearts"},
+    {"id": "baby-first-year", "name": "Первый год малыша", "tags": ["Детям", "Семья"], "page": "#F2F7FF", "ink": "#2F4A6E", "accent": "#7FB2F0", "font": "hand", "frame": "round", "decor": "stars"},
+    {"id": "kids-play", "name": "Детство", "tags": ["Детям"], "page": "#FFF8E1", "ink": "#4A3B12", "accent": "#FFB300", "font": "hand", "frame": "polaroid", "decor": "confetti"},
+    {"id": "travel-passport", "name": "Паспорт путешественника", "tags": ["Путешествия"], "page": "#EFE8DA", "ink": "#3B3326", "accent": "#C0572B", "font": "serif", "frame": "polaroid", "decor": "tape"},
+    {"id": "travel-sea", "name": "Море", "tags": ["Путешествия", "Лето"], "page": "#EAF6F8", "ink": "#11475A", "accent": "#1F9AB8", "font": "sans", "frame": "white", "decor": "none"},
+    {"id": "family-year", "name": "Наш год", "tags": ["Семья", "Родителям"], "page": "#FAF7F2", "ink": "#33302B", "accent": "#D97B4A", "font": "serif", "frame": "thin", "decor": "none"},
+    {"id": "birthday", "name": "День рождения", "tags": ["Праздники", "Детям"], "page": "#FFF5F8", "ink": "#4B2240", "accent": "#B04ADB", "font": "hand", "frame": "white", "decor": "confetti"},
+    {"id": "newyear", "name": "Новый год", "tags": ["Новый год", "Праздники"], "page": "#0F2A2A", "ink": "#F4EBD5", "accent": "#D9B45A", "font": "serif", "frame": "white", "decor": "snow"},
+    {"id": "christmas", "name": "Рождество", "tags": ["Новый год", "Праздники"], "page": "#FBF5EC", "ink": "#6E1F1F", "accent": "#A8332F", "font": "serif", "frame": "polaroid", "decor": "stars"},
+    {"id": "grad-classic", "name": "Выпускной · Классика", "tags": ["Выпускной"], "page": "#13213A", "ink": "#F2F4F8", "accent": "#E2B65C", "font": "serif", "frame": "white", "decor": "stars"},
+    {"id": "grad-kindergarten", "name": "Выпускной · Детский сад", "tags": ["Выпускной", "Детям"], "page": "#FFFBEA", "ink": "#3F3A1E", "accent": "#5CB85C", "font": "hand", "frame": "round", "decor": "confetti"},
+    {"id": "baptism", "name": "Крещение", "tags": ["Семья", "Праздники"], "page": "#F8F9FC", "ink": "#3A4560", "accent": "#A9B8D6", "font": "serif", "frame": "round", "decor": "corners"},
+    {"id": "autumn", "name": "Осень", "tags": ["Осень", "Семья"], "page": "#FBF2E6", "ink": "#5A3416", "accent": "#D9822B", "font": "hand", "frame": "polaroid", "decor": "leaves"},
+    {"id": "spring", "name": "Весна", "tags": ["Весна"], "page": "#F7FBF1", "ink": "#3C5426", "accent": "#E58AA7", "font": "hand", "frame": "white", "decor": "leaves"},
+    {"id": "film", "name": "Плёнка", "tags": ["Все", "Для творчества"], "page": "#1B1B1B", "ink": "#EDEDED", "accent": "#E8B04B", "font": "sans", "frame": "none", "decor": "film"},
+    {"id": "scrapbook", "name": "Скрапбук", "tags": ["Для творчества", "Семья"], "page": "#F1EBDD", "ink": "#3A3328", "accent": "#7A9E7E", "font": "hand", "frame": "polaroid", "decor": "tape"}
+  ]
+}

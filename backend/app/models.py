@@ -37,7 +37,8 @@ class Product(Base):
     title: Mapped[str] = mapped_column(String(120))
     subtitle: Mapped[str] = mapped_column(String(200), default="")
     category: Mapped[str] = mapped_column(String(40))
-    kind: Mapped[str] = mapped_column(String(20), default="book")  # book | prints | wall | calendar
+    kind: Mapped[str] = mapped_column(String(20), default="book")  # book | prints | single | card | calendar
+    mockup: Mapped[str] = mapped_column(String(20), default="book")
     description: Mapped[str] = mapped_column(Text, default="")
     base_price_minor: Mapped[int] = mapped_column(Integer)
     currency: Mapped[str] = mapped_column(String(3), default="BYN")
@@ -256,6 +257,51 @@ class AnalyticsEvent(Base):
     name: Mapped[str] = mapped_column(String(40), index=True)
     props: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(TZDateTime, default=utcnow, index=True)
+
+
+class PhotoEvent(Base):
+    """Конвейер обработки фото: загрузка → анализ → рекомендации → решения → AI → макет → заказ."""
+    __tablename__ = "photo_events"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    photo_id: Mapped[str] = mapped_column(String(32), index=True)
+    root_id: Mapped[str] = mapped_column(String(32), index=True)  # исходное фото (для версий)
+    project_id: Mapped[Optional[str]] = mapped_column(String(32), index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(30))
+    actor: Mapped[str] = mapped_column(String(20), default="system")  # user | cat | robot | ai | system | manager
+    title: Mapped[str] = mapped_column(String(200), default="")
+    details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, default=utcnow, index=True)
+
+
+class Theme(Base):
+    """Пользовательские цветовые схемы, созданные администратором (фиксированные — в config_data/themes.json)."""
+    __tablename__ = "themes"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    name: Mapped[str] = mapped_column(String(80))
+    family: Mapped[str] = mapped_column(String(40), default="custom")
+    mode: Mapped[str] = mapped_column(String(10), default="light")
+    colors: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, default=utcnow)
+
+
+class TelegramLink(Base):
+    """Привязка Telegram клиента: бот присылает этапы заказа. Подключение — по желанию клиента."""
+    __tablename__ = "telegram_links"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    username: Mapped[str] = mapped_column(String(64), default="")  # что ввёл клиент (@ник)
+    chat_id: Mapped[Optional[str]] = mapped_column(String(32))     # появляется после /start в боте
+    tg_name: Mapped[str] = mapped_column(String(120), default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    linked_at: Mapped[Optional[datetime]] = mapped_column(TZDateTime)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, default=utcnow)
+
+
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+    key: Mapped[str] = mapped_column(String(60), primary_key=True)
+    value: Mapped[Any] = mapped_column(JSON)
 
 
 class Decision(Base):

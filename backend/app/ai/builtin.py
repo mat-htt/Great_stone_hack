@@ -97,7 +97,18 @@ def auto_enhance(img: Image.Image, strength: float = 1.0, **_: Any) -> Image.Ima
 
 def upscale(img: Image.Image, scale: int = 2, **_: Any) -> Image.Image:
     scale = 4 if int(scale) >= 4 else 2
+    from . import neural
     w, h = img.size
+    # Нейросеть FSRCNN: ограничиваем вход, чтобы результат не превышал MAX_OUT
+    if neural.status().get(f"fsrcnn_x{scale}"):
+        src = img
+        limit = MAX_OUT // scale
+        if max(w, h) > limit:
+            src = img.copy()
+            src.thumbnail((limit, limit), Image.Resampling.LANCZOS)
+        out = neural.super_resolve(src, scale)
+        if out is not None:
+            return _unsharp(out, 0.8, 35, 2)
     factor = min(scale, MAX_OUT / max(w, h))
     if factor <= 1.01:
         return _unsharp(img, 1.0, 40)
@@ -249,6 +260,11 @@ def smart_extend(img: Image.Image, aspect: float = 1.0, **_: Any) -> Image.Image
 
 
 def remove_bg(img: Image.Image, **_: Any) -> Image.Image:
+    from . import neural
+    mask = neural.salient_mask(img)
+    if mask is not None:  # U²-Net-p: мягкая маска объекта, фон — белый для печати
+        m = cv2.GaussianBlur(mask, (0, 0), 1.2)[..., None]
+        return _img(_f(img) * m + (1 - m) * 1.0)
     work, size = _limit(img, 900)
     bgr = to_cv(work)
     h, w = bgr.shape[:2]
@@ -284,6 +300,22 @@ def adjust(img: Image.Image, brightness: float = 0, contrast: float = 0, saturat
         hsv[..., 1] = np.clip(hsv[..., 1] * (1 + float(saturation) / 100), 0, 255)
         out = Image.fromarray(cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2RGB))
     return out
+
+
+def model_name(tool: str, params: dict[str, Any] | None = None) -> str:
+    """Какая модель реально отработала — для журнала AI-задач и интерфейса."""
+    from . import neural
+    st = neural.status()
+    if tool == "upscale":
+        s = 4 if int((params or {}).get("scale", 2)) >= 4 else 2
+        return f"FSRCNN ×{s} (нейросеть)" if st.get(f"fsrcnn_x{s}") else "Lanczos + детали"
+    if tool == "remove_bg":
+        return "U²-Net-p (нейросеть)" if st["u2netp"] else "GrabCut"
+    if tool == "portrait":
+        return "YuNet + bilateral" if st["yunet"] else "Haar + bilateral"
+    if tool == "smart_extend":
+        return "OpenCV fill"
+    return "OpenCV"
 
 
 IMAGE_OPS: dict[str, Callable[..., Image.Image]] = {

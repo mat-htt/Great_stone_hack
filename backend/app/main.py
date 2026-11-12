@@ -12,9 +12,10 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import errors, simulator
+from . import telegram as tg_bot
 from .config import CORS_ORIGINS, SEED_ON_START
 from .db import Base, engine
-from .routers import admin, ai, auth, catalog, misc, orders, photos, projects
+from .routers import admin, ai, auth, catalog, dbadmin, misc, orders, photos, pipeline, projects, telegram, themes
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -26,8 +27,10 @@ async def lifespan(_: FastAPI):
         from .seed.seed import run
         run()
     task = asyncio.create_task(simulator.loop())
+    bot = asyncio.create_task(tg_bot.loop())
     yield
     task.cancel()
+    bot.cancel()
 
 
 app = FastAPI(title="picPac API", version="1.0.0", lifespan=lifespan,
@@ -38,6 +41,7 @@ app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["*
                    expose_headers=["X-AI-Provider", "X-AI-Status", "X-AI-Duration"])
 
 for r in (auth.router, catalog.router, photos.router, projects.router, orders.router, ai.router, admin.router,
+          themes.router, pipeline.router, dbadmin.router, telegram.router,
           misc.router):
     app.include_router(r)
 

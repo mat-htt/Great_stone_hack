@@ -1,0 +1,46 @@
+{
+  "_comment": "Конфигуратор цветовых тем picPac. Фиксированные темы (fixed=true) нельзя удалить из админки. Все цвета приложения, логотипа и маскотов берутся отсюда; оттенки (hover, мягкий фон, обводки) вычисляются автоматически.",
+  "default": "rose-light",
+  "themes": [
+    {
+      "id": "rose-light", "name": "PicPac Роза", "family": "rose", "mode": "light", "fixed": true,
+      "colors": {
+        "primary": "#E8466B", "primaryInk": "#FFFFFF",
+        "bg": "#F3F2F5", "surface": "#FFFFFF", "surface2": "#EEEDF1",
+        "text": "#16161A", "muted": "#74747F", "line": "rgba(22,22,26,0.08)",
+        "success": "#21A366", "warning": "#F2A100", "danger": "#E5383B", "info": "#3B7CF6",
+        "glow1": "#FF8FAB", "glow2": "#FFC2D1", "glow3": "#FFE3B8"
+      }
+    },
+    {
+      "id": "rose-dark", "name": "PicPac Роза · ночь", "family": "rose", "mode": "dark", "fixed": true,
+      "colors": {
+        "primary": "#FF5C82", "primaryInk": "#FFFFFF",
+        "bg": "#0E0E11", "surface": "#18181D", "surface2": "#222229",
+        "text": "#F4F4F6", "muted": "#9C9CA8", "line": "rgba(255,255,255,0.08)",
+        "success": "#3DD68C", "warning": "#FFC247", "danger": "#FF5C5C", "info": "#6EA2FF",
+        "glow1": "#B3254F", "glow2": "#5B1A47", "glow3": "#2A1A4A"
+      }
+    },
+    {
+      "id": "sun-light", "name": "Солнечная", "family": "sun", "mode": "light", "fixed": true,
+      "colors": {
+        "primary": "#FFD43B", "primaryInk": "#141414",
+        "bg": "#F4F3EF", "surface": "#FFFFFF", "surface2": "#EFEEEA",
+        "text": "#141414", "muted": "#76746E", "line": "rgba(20,20,20,0.08)",
+        "success": "#21A366", "warning": "#E08A00", "danger": "#E5383B", "info": "#3B7CF6",
+        "glow1": "#FFE066", "glow2": "#FFF3BF", "glow3": "#FFD8A8"
+      }
+    },
+    {
+      "id": "sun-dark", "name": "Солнечная · ночь", "family": "sun", "mode": "dark", "fixed": true,
+      "colors": {
+        "primary": "#FFD43B", "primaryInk": "#141414",
+        "bg": "#0D0D0D", "surface": "#1A1A1A", "surface2": "#242424",
+        "text": "#F5F5F5", "muted": "#9E9E9E", "line": "rgba(255,255,255,0.08)",
+        "success": "#3DD68C", "warning": "#FFC247", "danger": "#FF5C5C", "info": "#6EA2FF",
+        "glow1": "#8A6A00", "glow2": "#3D3000", "glow3": "#1F1A00"
+      }
+    }
+  ]
+}

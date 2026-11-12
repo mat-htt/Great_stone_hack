@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { track } from './api'
-import { Cat } from './components/Mascots'
+import { Mascot } from './components/Mascots'
+import { Ambient } from './components/ui'
 import { useApp } from './store'
 import Welcome from './pages/Welcome'
 import Home from './pages/Home'
@@ -18,17 +19,18 @@ import Profile from './pages/Profile'
 import Join from './pages/Join'
 
 const Admin = lazy(() => import('./admin/Admin'))
+const AdminLogin = lazy(() => import('./admin/AdminLogin'))
 
 function Splash() {
-  return <div className="center" style={{ minHeight: '100dvh' }}><div className="float"><Cat size={84} /></div></div>
+  return <div className="center" style={{ minHeight: '100dvh' }}><Ambient /><div className="float"><Mascot pose="cat-point" size={120} /></div></div>
 }
 
 function Guard({ children, staff = false }: { children: ReactNode; staff?: boolean }) {
   const { user, ready } = useApp()
   const loc = useLocation()
   if (!ready) return <Splash />
+  if (staff && (!user || user.role === 'client')) return <Suspense fallback={<Splash />}><AdminLogin /></Suspense>
   if (!user) return <Navigate to={`/welcome?next=${encodeURIComponent(loc.pathname + loc.search)}`} replace />
-  if (staff && user.role === 'client') return <Navigate to="/" replace />
   return <>{children}</>
 }
 
@@ -39,12 +41,14 @@ export default function App() {
   if (loc.pathname.startsWith('/admin')) {
     return (
       <Guard staff>
+        <Ambient />
         <Suspense fallback={<Splash />}><Routes><Route path="/admin/*" element={<Admin />} /></Routes></Suspense>
       </Guard>
     )
   }
   return (
     <div className="app-shell">
+      <Ambient />
       <Routes>
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/join/:code" element={<Join />} />

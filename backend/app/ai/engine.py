@@ -13,7 +13,7 @@ from ..config import MANUAL_MINUTES
 from ..errors import ApiError
 from ..models import AIJob, AIProvider, AIToolSetting, User
 from . import builtin, commands, providers
-from .registry import IMAGE, PROVIDER_PRESETS, TOOLS
+from .registry import IMAGE, LLM_DEFAULT, PROVIDER_PRESETS, TOOLS
 
 
 def ensure_defaults(db: Session) -> None:
@@ -22,7 +22,7 @@ def ensure_defaults(db: Session) -> None:
             db.add(AIProvider(**{k: v for k, v in preset.items()}))
     for tool_id, tool in TOOLS.items():
         if not db.get(AIToolSetting, tool_id):
-            default_provider = "builtin" if "builtin" in tool["kinds"] else "openai"
+            default_provider = "ollama" if tool_id in LLM_DEFAULT else ("builtin" if "builtin" in tool["kinds"] else "openai")
             db.add(AIToolSetting(tool_id=tool_id, provider_id=default_provider,
                                  enabled=not tool.get("generative", False)))
     db.commit()
@@ -70,6 +70,7 @@ def run_image(db: Session, tool_id: str, img: Image.Image, params: dict[str, Any
                 raise ApiError(409, "needs_provider",
                                "Для этого инструмента нужна генеративная модель — подключите её в админке")
             out = builtin.IMAGE_OPS[tool_id](img, **merged)
+            model = builtin.model_name(tool_id, merged)
         elif provider.kind == "http_image":
             out = providers.http_image(provider, tool_id, model, img, merged)
         elif provider.kind == "openai":
@@ -88,8 +89,9 @@ def run_image(db: Session, tool_id: str, img: Image.Image, params: dict[str, Any
         if setting.fallback_builtin and tool_id in builtin.IMAGE_OPS and provider.kind != "builtin":
             out = builtin.IMAGE_OPS[tool_id](img, **merged)
             fb = db.get(AIProvider, "builtin")
-            job = _log(db, tool_id, fb, "picpac-cv-1", user, object_id, "fallback", started, fallback_reason)
-            return out, {"provider": "builtin", "provider_title": fb.title, "model": "picpac-cv-1",
+            mname = builtin.model_name(tool_id, merged)
+            job = _log(db, tool_id, fb, mname, user, object_id, "fallback", started, fallback_reason)
+            return out, {"provider": "builtin", "provider_title": fb.title, "model": mname,
                          "status": "fallback", "fallback_reason": fallback_reason,
                          "duration_ms": job.duration_ms, "saved_minutes": job.saved_minutes}
         _log(db, tool_id, provider, model, user, object_id, "error", started, fallback_reason)
@@ -151,6 +153,12 @@ def _llm_text(provider: AIProvider, model: str, tool_id: str, payload: dict[str,
         plan = commands.validate_plan(raw)
         if not plan["actions"] and not plan["reply"]:
             raise providers.ProviderError("empty plan")
+        # Страховка для небольших локальных моделей: добавляем действия, которые явно названы в просьбе,
+        # но модель пропустила (разбор по правилам из белого списка)
+        key = lambda a: (a["type"], a.get("tool"), (a.get("params") or {}).get("style"), a.get("op"))
+        have = {key(a) for a in plan["actions"]}
+        rules = commands.builtin_plan(payload.get("text", ""), bool(payload.get("has_selection")))
+        plan["actions"] += [a for a in rules["actions"] if key(a) not in have][: 8 - len(plan["actions"])]
         return plan
     if tool_id == "captions":
         msgs = [{"role": "system", "content": commands.CAPTIONS_PROMPT},

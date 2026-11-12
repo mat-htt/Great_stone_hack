@@ -57,7 +57,7 @@ def test_full_path_with_10_photos_order_and_idempotency(client):
     assert up.status_code == 200, up.text
     ids = [p["id"] for p in up.json()["photos"]]
     assert len(ids) == 12
-    pr = client.post("/api/projects", json={"product_id": "photobook-premium", "photo_ids": ids}, headers=h)
+    pr = client.post("/api/projects", json={"product_id": "book-premium", "photo_ids": ids}, headers=h)
     assert pr.status_code == 200, pr.text
     project = pr.json()
     # порядок сохраняется после повторного открытия
@@ -109,11 +109,11 @@ def test_quality_warning_and_bad_format(client):
 
 
 def test_price_recalculation(client):
-    base = client.post("/api/quote", json={"product_id": "photobook-premium", "pages": 20, "photos": 20}).json()
-    more = client.post("/api/quote", json={"product_id": "photobook-premium", "pages": 30, "photos": 20,
+    base = client.post("/api/quote", json={"product_id": "book-premium", "pages": 20, "photos": 20}).json()
+    more = client.post("/api/quote", json={"product_id": "book-premium", "pages": 30, "photos": 20,
                                            "quantity": 2, "delivery_method": "courier"}).json()
     assert more["total_minor"] > base["total_minor"]
-    promo = client.post("/api/quote", json={"product_id": "photobook-premium", "pages": 20, "photos": 20,
+    promo = client.post("/api/quote", json={"product_id": "book-premium", "pages": 20, "photos": 20,
                                             "promo_code": "PICPAC10"}).json()
     assert promo["discount_minor"] == round(base["subtotal_minor"] * 0.1)
 
@@ -156,3 +156,62 @@ def test_delete_account_removes_photos(client):
     r = client.delete("/api/auth/me", headers=h)
     assert r.status_code == 200 and r.json()["photos_deleted"] == 1
     assert client.get("/api/auth/me", headers=h).status_code == 401
+
+
+def test_telegram_optional_link_and_status_messages(client, monkeypatch):
+    """Бот необязателен: без токена всё работает; после /start <код> клиент получает этапы заказа."""
+    import time
+    from types import SimpleNamespace
+
+    from app import services, telegram
+    from app.db import SessionLocal
+    from app.models import AppSetting
+
+    h = _guest(client)
+    st = client.get("/api/telegram/me", headers=h).json()
+    assert st["configured"] is False and st["linked"] is False
+    assert client.post("/api/telegram/me", json={"username": "bad nick!"}, headers=h).status_code == 422
+
+    sent: list[dict] = []
+
+    def fake_call(token, method, http_timeout=10, **params):
+        if method == "sendMessage":
+            sent.append(params)
+            return {"message_id": len(sent)}
+        return [] if method == "getUpdates" else {"username": "picpac_test_bot"}
+
+    monkeypatch.setattr(telegram, "call", fake_call)
+    with SessionLocal() as db:
+        db.add(AppSetting(key="telegram_token", value="123456:" + "A" * 35))
+        db.add(AppSetting(key="telegram_bot_username", value="picpac_test_bot"))
+        db.commit()
+
+    st = client.post("/api/telegram/me", json={"username": "@ann_test"}, headers=h).json()
+    assert st["configured"] and st["requested"] and not st["linked"]
+    code = st["link"].split("start=")[1]
+    telegram._handle({"message": {"text": f"/start {code}", "chat": {"id": 555}, "from": {"first_name": "Ann"}}}, "tok")
+    st = client.get("/api/telegram/me", headers=h).json()
+    assert st["linked"] and st["enabled"]
+
+    me = client.get("/api/auth/me", headers=h).json()
+    uid = me.get("id") or me["user"]["id"]
+    with SessionLocal() as db:
+        services.notify(db, uid, "Заказ PP-1: Печать", "Печатаем!")
+        db.commit()
+    for _ in range(40):
+        if any("Печать" in m.get("text", "") for m in sent):
+            break
+        time.sleep(0.05)
+    assert any(m["chat_id"] == "555" and "Печать" in m["text"] for m in sent)
+
+    order = SimpleNamespace(eta=None, delivery_method="pickup", track_number=None)
+    assert "готов к выдаче" in services.order_telegram_text(order, "shipped", None, "")
+    order = SimpleNamespace(eta=None, delivery_method="courier", track_number="BY1PP")
+    assert "BY1PP" in services.order_telegram_text(order, "shipped", None, "")
+
+    telegram._handle({"message": {"text": "/stop", "chat": {"id": 555}}}, "tok")
+    assert client.get("/api/telegram/me", headers=h).json()["enabled"] is False
+    with SessionLocal() as db:
+        for k in ("telegram_token", "telegram_bot_username"):
+            db.delete(db.get(AppSetting, k))
+        db.commit()
