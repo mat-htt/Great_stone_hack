@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { CreditCard, Lock, Minus, Plus, Tag, Users } from 'lucide-react'
 import { api, ApiError, media, money, track, uuid, type Order, type Project, type Quote } from '../api'
 import { Say } from '../components/Mascots'
-import { TopBar, useDebounced } from '../components/ui'
-import { Mockup } from '../components/Mockup'
+import { CoverView, TopBar, useDebounced, useDesigns } from '../components/ui'
+import { productImage } from '../components/Mockup'
 import { errorText, useApp } from '../store'
 
 interface Delivery { id: string; label: string; price_minor: number; days: number; free_from_minor: number }
@@ -13,6 +13,7 @@ export default function Checkout() {
   const { id } = useParams()
   const nav = useNavigate()
   const { toast, online } = useApp()
+  const designs = useDesigns()
   const [project, setProject] = useState<Project | null>(null)
   const [delivery, setDelivery] = useState<Delivery[]>([])
   const [qty, setQty] = useState(1)
@@ -75,7 +76,9 @@ export default function Checkout() {
       <TopBar back={`/check/${id}`} title="Оформление" />
       <main className="content no-dock stack" style={{ gap: 18 }}>
         <div className="card row" style={{ gap: 16 }}>
-          {project.cover_photo_id ? <Mockup kind={project.product.mockup} src={media(`/api/media/${project.cover_photo_id}?size=thumb`)} size={86} /> : <span style={{ width: 70, height: 70, borderRadius: 16, background: 'var(--fill)' }} />}
+          {project.cover_photo_id ? (project.product.kind === 'book' ? <CoverView design={designs.find((d) => d.id === (project.options.template || project.product.specs.template))} photo={media(`/api/media/${project.cover_photo_id}?size=thumb`)} title={project.title} size={74} />
+            : <img src={media(`/api/media/${project.cover_photo_id}?size=thumb`)} alt="" style={{ width: 74, height: 74, borderRadius: 16, objectFit: 'cover' }} />)
+            : <img src={productImage(project.product.id)} alt="" style={{ width: 74, height: 74, borderRadius: 16, objectFit: 'cover' }} />}
           <div className="grow">
             <div className="t-h3">{project.title}</div>
             <div className="t-sm muted">{project.product.title} · {project.product.specs.sizes.find((s) => s.id === project.options.size)?.label}</div>

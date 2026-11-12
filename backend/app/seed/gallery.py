@@ -1,4 +1,4 @@
-"""Генератор синтетической тестовой галереи (без реальных людей и чужих фото).
+"""Тестовая галерея: настоящие фото из открытых превью шаблонов picPac + процедурная синтетика.
 
 Сцены рисуются процедурно; часть кадров специально «с браком»: дубли, размытие, темнота,
 низкое разрешение — чтобы показать работу Кота-куратора и Робота-ОТК."""
@@ -192,11 +192,36 @@ SCENES = [
 ]
 
 
+REAL_DIR = Path(__file__).with_name("real")
+REAL = [("family", "Минск", "2025-12-24T17:00:00+00:00"), ("kids", "Дача", "2025-09-28T12:00:00+00:00"),
+        ("girl", "Нарочь", "2026-07-02T18:30:00+00:00"), ("mom", "Минск", "2026-03-08T13:00:00+00:00"),
+        ("woman", "Батуми", "2026-07-14T10:00:00+00:00"), ("boy", "Минск", "2026-05-25T09:00:00+00:00"),
+        ("city", "Санкт-Петербург", "2026-04-30T16:00:00+00:00"), ("baby", "Минск", "2025-10-31T08:00:00+00:00")]
+
+
+def _with_real(items: list[dict]) -> list[dict]:
+    """Настоящие фото (из открытых превью шаблонов picPac) — первыми; синтетика с «браком» — для демонстрации ОТК."""
+    real = []
+    for key, place, taken in REAL:
+        src = REAL_DIR / f"{key}.jpg"
+        if not src.exists():
+            continue
+        name = f"real_{key}.jpg"
+        if not (GALLERY_DIR / name).exists():
+            (GALLERY_DIR / name).write_bytes(src.read_bytes())
+        real.append({"file": name, "place": place, "taken_at": taken, "scene": "people", "flaw": None})
+    return real + [it for it in items if not it["file"].startswith("real_")]
+
+
 def generate(force: bool = False) -> list[dict]:
     GALLERY_DIR.mkdir(parents=True, exist_ok=True)
     index_path = GALLERY_DIR / "index.json"
     if index_path.exists() and not force:
-        return json.loads(index_path.read_text(encoding="utf-8"))
+        items = json.loads(index_path.read_text(encoding="utf-8"))
+        if not any(it["file"].startswith("real_") for it in items):
+            items = _with_real(items)
+            index_path.write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
+        return items
     rng = random.Random(2026)
     items: list[dict] = []
     for key, fn, place, start, count in SCENES:
@@ -229,6 +254,7 @@ def generate(force: bool = False) -> list[dict]:
                 dup.save(GALLERY_DIR / dname, "JPEG", quality=88)
                 items.append({"file": dname, "place": place, "taken_at": (taken + timedelta(seconds=2)).isoformat(),
                               "scene": key, "flaw": "duplicate"})
+    items = _with_real(items)
     index_path.write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
     return items
 

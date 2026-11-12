@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { api, money, type Category, type Product } from '../api'
-import { Mockup, PHOTO, shotFor } from '../components/Mockup'
+import { productImage } from '../components/Mockup'
 import { Dock, TopBar } from '../components/ui'
 
 export default function Catalog() {
@@ -34,7 +34,7 @@ export default function Catalog() {
           {shown.map((p) => (
             <Link key={p.id} to={`/catalog/${p.id}`} className="card p0" style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="center" style={{ height: 150, background: 'radial-gradient(90% 90% at 50% 100%, var(--primary-soft), var(--surface-2))', position: 'relative' }}>
-                {PHOTO[p.id] ? <img src={PHOTO[p.id]} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} /> : <Mockup kind={p.mockup} src={shotFor(p.id)} size={112} />}
+                <img src={productImage(p.id)} alt="" loading="lazy" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                 {p.badge && <span className="badge b-primary" style={{ position: 'absolute', top: 10, left: 10 }}>{p.badge}</span>}
               </div>
               <div style={{ padding: '12px 14px 14px' }}>

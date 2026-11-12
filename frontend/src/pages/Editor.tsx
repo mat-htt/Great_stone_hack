@@ -10,9 +10,8 @@ import {
 } from 'lucide-react'
 import { api, ApiError, media, track, type AiTool, type Layout, type Page, type Photo, type Preflight, type Project } from '../api'
 import { Avatar, MASCOT } from '../components/Mascots'
-import { Mockup } from '../components/Mockup'
 import View3D from '../components/View3D'
-import { aspectOf, BeforeAfter, byOccasion, DesignCard, OCCASIONS, PageView, Sheet, TEMPLATES, useDesigns, type Design } from '../components/ui'
+import { aspectOf, BeforeAfter, byOccasion, CoverView, DesignCard, OCCASIONS, PageView, Sheet, TEMPLATES, useDesigns, type Design } from '../components/ui'
 import { errorText, getLocal, pushDraft, saveLocal, useApp } from '../store'
 
 const ICON: Record<string, any> = { wand: Wand2, expand: Expand, focus: Focus, drop: Droplets, face: ScanFace, history: History, scissors: Scissors, palette: Palette, frame: Frame, sliders: SlidersHorizontal, stars: Stars }
@@ -293,7 +292,7 @@ export default function Editor() {
       const cp = layout.cover?.photo_id ? photos[layout.cover.photo_id] : null
       return (
         <button onClick={() => { if (canEdit) { setSel(null); setReplaceOpen(true) } }} style={{ border: 0, background: 'none', padding: 0, cursor: 'pointer' }} aria-label="Обложка — сменить фото">
-          {cp ? <Mockup kind="book" src={media(cp.thumb)} size={Math.min(300, window.innerWidth * 0.7)} title={title} /> : <div className="card center" style={{ width: 220, height: 220 }}>Выберите обложку</div>}
+          {cp ? <CoverView design={design} photo={media(`/api/media/${cp.id}?size=preview`)} title={title} aspect={aspect} size={Math.min(320, window.innerWidth * 0.72)} /> : <div className="card center" style={{ width: 220, height: 220 }}>Выберите обложку</div>}
         </button>
       )
     }

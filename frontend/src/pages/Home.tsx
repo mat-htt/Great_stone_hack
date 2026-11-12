@@ -5,6 +5,7 @@ import { api, fmtDate, media, track, type Memory, type Order, type Project } fro
 import { Avatar, Logo, Mascot } from '../components/Mascots'
 import { Dock, MiniProgress, Sheet, plural } from '../components/ui'
 import { errorText, useApp } from '../store'
+import Drafts from '../components/Drafts'
 
 // Фото изделий — с picpac.by (официальные снимки продукции «Фотопринта»)
 const TILES = [
@@ -100,21 +101,7 @@ export default function Home() {
             )}
         </section>
 
-        {drafts.length > 0 && (
-          <section className="section">
-            <div className="section-head"><h2 className="t-h2">Черновики</h2></div>
-            <div className="list">
-              {drafts.slice(0, 3).map((d) => (
-                <Link key={d.id} to={`/editor/${d.id}`} className="list-row">
-                  {d.cover_photo_id ? <img src={media(`/api/media/${d.cover_photo_id}?size=thumb`)} alt="" style={{ width: 48, height: 48, borderRadius: 14, objectFit: 'cover' }} />
-                    : <span style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--fill)' }} />}
-                  <div className="grow"><div className="t-h3 ellipsis">{d.title}</div><div className="t-sm muted">{d.role === 'member' ? `альбом ${d.owner_name}` : 'сохранено автоматически'}</div></div>
-                  <ChevronRight size={18} className="muted" />
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        <Drafts drafts={drafts} setDrafts={setDrafts} />
       </main>
 
       {active && (

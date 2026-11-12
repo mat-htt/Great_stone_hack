@@ -40,7 +40,7 @@ export default function Profile() {
           <div className="grow"><h1 className="t-h1 ellipsis">{user?.name}</h1><div className="t-sm muted">{user?.is_guest ? 'Гость' : user?.email}</div></div>
         </div>
         {user?.is_guest && (
-          <button className="card row" style={{ width: '100%', border: 0, marginTop: 18, cursor: 'pointer', background: 'var(--primary)', color: 'var(--primary-ink)', textAlign: 'left' }} onClick={() => setReg(true)}>
+          <button className="card row grad-accent" style={{ width: '100%', border: 0, marginTop: 18, cursor: 'pointer', textAlign: 'left' }} onClick={() => setReg(true)}>
             <UserPlus size={22} /><div className="grow"><b>Сохранить аккаунт</b><div className="t-sm" style={{ opacity: .8 }}>Проекты и заказы останутся с вами</div></div><ChevronRight size={18} />
           </button>
         )}

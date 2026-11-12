@@ -20,6 +20,7 @@ import Join from './pages/Join'
 
 const Admin = lazy(() => import('./admin/Admin'))
 const AdminLogin = lazy(() => import('./admin/AdminLogin'))
+const DevShots = import.meta.env.DEV ? lazy(() => import('./dev/Shots')) : null
 
 function Splash() {
   return <div className="center" style={{ minHeight: '100dvh' }}><Ambient /><div className="float"><Mascot pose="cat-point" size={120} /></div></div>
@@ -50,6 +51,7 @@ export default function App() {
     <div className="app-shell">
       <Ambient />
       <Routes>
+        {DevShots && <Route path="/dev/shots" element={<Guard><Suspense fallback={<Splash />}><DevShots /></Suspense></Guard>} />}
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/join/:code" element={<Join />} />
         <Route path="/" element={<Guard><Home /></Guard>} />

@@ -617,3 +617,28 @@ def sim_set(body: SimIn, request: Request, user: User = Depends(admin), db: Sess
     audit(db, user, "simulator_update", "simulator", "-", details=body.model_dump(), request=request)
     db.commit()
     return simulator.state()
+
+
+# ---------- Снимки изделий для каталога (рендер 3D-моделей) ----------
+from fastapi import File, UploadFile  # noqa: E402
+
+from ..config import MEDIA_DIR  # noqa: E402
+
+
+@router.post("/product-shots/{product_id}")
+async def product_shot(product_id: str, request: Request, file: UploadFile = File(...), user: User = Depends(admin),
+                       db: Session = Depends(get_db)):
+    """Администратор обновляет фото изделия для каталога: студийный кадр 3D-модели (страница /dev/shots)."""
+    if not db.get(Product, product_id):
+        raise ApiError(404, "product_not_found", "Нет такого продукта")
+    data = await file.read()
+    if len(data) > 8 * 1024 * 1024:
+        raise ApiError(413, "too_large", "Файл больше 8 МБ")
+    img = Image.open(io.BytesIO(data)).convert("RGB")
+    img.thumbnail((1000, 1000), Image.Resampling.LANCZOS)
+    out = MEDIA_DIR / "product-shots"
+    out.mkdir(parents=True, exist_ok=True)
+    img.save(out / f"{product_id}.webp", "WEBP", quality=86, method=6)
+    audit(db, user, "product_shot", "product", product_id, request=request)
+    db.commit()
+    return {"ok": True, "size": img.size}

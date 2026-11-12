@@ -128,6 +128,11 @@ export const SHOT: Record<string, string> = {
 export const shotFor = (id: string) => `/api/gallery/file/${SHOT[id] || 'sea_00.jpg'}`
 
 // Настоящие фото изделий с picpac.by (для товаров, которые есть на сайте)
+// Настоящие фото изделий: CC0-снимки (Openverse) и компоновка наших фото в реальные сцены — см. public/products/real/CREDITS.json
+const REAL = new Set(['mug', 'postcard', 'invitation', 'envelope', 'calendar-wall', 'calendar-desk', 'magnets', 'puzzle', 'pillow', 'tshirt', 'poster', 'canvas'])
+/** Фото изделия для каталога: снимок picPac, если есть, иначе настоящее фото изделия в интерьере. */
+export const productImage = (id: string) => PHOTO[id] || (REAL.has(id) ? `/products/real/${id}.webp` : '/products/classicb.webp')
+
 export const PHOTO: Record<string, string> = {
   'book-premium': '/products/premiumb.webp', 'book-classic': '/products/classicb.webp', 'book-lite': '/products/liteb.webp',
   'prints-classic': '/products/phpotob.webp', 'prints-mini': '/products/digitalb.webp',

@@ -43,6 +43,7 @@ def project_public(db: Session, p: Project, full: bool = True) -> dict[str, Any]
         "owner_name": owner.name if owner else "", "pages_count": len((p.layout or {}).get("pages", [])),
         "cover_photo_id": ((p.layout or {}).get("cover") or {}).get("photo_id"),
         "created_at": p.created_at.isoformat(), "updated_at": p.updated_at.isoformat(),
+        "kept": bool((p.options or {}).get("keep")),
         "members": [{"user_id": m.user_id, "name": m.display_name, "joined_at": m.joined_at.isoformat()}
                     for m in p.members],
     }
@@ -291,6 +292,48 @@ def share(project_id: str, request: Request, user: User = Depends(current_user),
     audit(db, user, "project_share", "project", p.id, request=request)
     db.commit()
     return {"share_code": p.share_code, "link": f"/join/{p.share_code}"}
+
+
+class MetaIn(BaseModel):
+    title: Optional[str] = Field(default=None, max_length=120)
+    keep: Optional[bool] = None
+
+
+@router.post("/projects/{project_id}/meta")
+def project_meta(project_id: str, body: MetaIn, request: Request, user: User = Depends(current_user),
+                 db: Session = Depends(get_db)):
+    """Черновик: переименовать и/или «сохранить» (закрепить — такой черновик не удаляется при очистке)."""
+    p = _get(db, user, project_id)
+    if p.owner_id != user.id:
+        raise ApiError(403, "not_owner", "Менять можно только свой черновик")
+    if body.title is not None and body.title.strip():
+        p.title = body.title.strip()
+    if body.keep is not None:
+        opts = dict(p.options or {})
+        if body.keep:
+            opts["keep"] = "1"
+        else:
+            opts.pop("keep", None)
+        p.options = opts
+    p.revision += 1
+    p.updated_at = utcnow()
+    audit(db, user, "project_meta", "project", p.id, details=body.model_dump(exclude_none=True), request=request)
+    db.commit()
+    return project_public(db, p, full=False)
+
+
+@router.delete("/projects")
+def clear_drafts(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Очистить черновики: удаляются все свои несохранённые черновики; фото остаются в библиотеке."""
+    drafts = [p for p in db.query(Project).filter_by(owner_id=user.id, status="draft").all() if not (p.options or {}).get("keep")]
+    ids = [p.id for p in drafts]
+    for p in drafts:
+        for ph in _photos(db, p):
+            ph.project_id = None
+        db.delete(p)
+    audit(db, user, "drafts_clear", "project", "-", details={"count": len(drafts)}, request=request)
+    db.commit()
+    return {"deleted": len(ids), "ids": ids}
 
 
 @router.delete("/projects/{project_id}")

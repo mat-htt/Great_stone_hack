@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api, money, track, type Product, type Quote } from '../api'
 import { Say } from '../components/Mascots'
-import { PHOTO } from '../components/Mockup'
+import { productImage } from '../components/Mockup'
 import View3D from '../components/View3D'
 import { byOccasion, DesignCard, OCCASIONS, TopBar, useDebounced, useDesigns } from '../components/ui'
 import INSPO from '../inspo.json'
@@ -54,10 +54,10 @@ export default function ProductPage() {
       <TopBar back />
       <main className="content no-dock stack" style={{ gap: 20 }}>
         <div style={{ marginTop: -6, position: 'relative' }}>
-          {view === '3d' || !PHOTO[p.id]
+          {view === '3d'
             ? <View3D product={p} options={opts} images={[]} design={designs.find((d) => d.id === opts.template)} title={p.title} height={320} />
-            : <img src={PHOTO[p.id]} alt={p.title} style={{ width: '100%', height: 320, objectFit: 'cover', borderRadius: 'var(--r-xl)', display: 'block' }} />}
-          {PHOTO[p.id] && (
+            : <img src={productImage(p.id)} alt={p.title} style={{ width: '100%', height: 320, objectFit: 'cover', borderRadius: 'var(--r-xl)', display: 'block' }} />}
+          {(
             <div className="seg glass" style={{ position: 'absolute', top: 10, left: 10, width: 'auto', padding: 3 }}>
               <button className={view === '3d' ? 'active' : ''} onClick={() => setView('3d')}>3D</button>
               <button className={view === 'photo' ? 'active' : ''} onClick={() => setView('photo')}>Фото</button>

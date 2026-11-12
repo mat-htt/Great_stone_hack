@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, type ReactNode } from 'react'
 import type { Product3DProps } from '../three/Product3D'
-import { Mockup } from './Mockup'
+import { productImage } from './Mockup'
 
 const Product3D = lazy(() => import('../three/Product3D'))
 
@@ -19,7 +19,7 @@ export default function View3D(props: Product3DProps & { badge?: boolean }) {
   const h = props.height ?? 340
   const fallback = (
     <div className="p3d center" style={{ height: h }}>
-      <Mockup kind={props.product.mockup} src={props.images[0] || '/api/gallery/file/sea_00.jpg'} size={Math.min(220, typeof h === 'number' ? h * 0.6 : 200)} />
+      <img src={productImage(props.product.id)} alt={props.product.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
     </div>
   )
   if (!webgl) return fallback

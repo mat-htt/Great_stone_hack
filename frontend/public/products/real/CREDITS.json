@@ -1,0 +1,90 @@
+{
+ "license": "CC0 / public domain via Openverse (StockSnap, rawpixel, WordPress Photo Directory)",
+ "composited_with": "фото людей — кадры из открытых превью шаблонов picPac",
+ "sources": {
+  "postcard": {
+   "title": "Free pink carnations background image",
+   "source": "rawpixel",
+   "license": "cc0",
+   "landing": "https://www.rawpixel.com/image/5907782/photo-image-paper-flower-public-domain",
+   "url": "https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvcHg2MjQ5NjEtaW1hZ2Uta3d2dmMwd3YuanBn.jpg"
+  },
+  "invitation": {
+   "title": "",
+   "source": "rawpixel",
+   "license": "cc0",
+   "landing": "https://www.rawpixel.com/image/5950008/free-public-domain-cc0-photo",
+   "url": "https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvcHgzOTM5MjUtaW1hZ2Uta3d5cGExZmIuanBn.jpg"
+  },
+  "pillow": {
+   "title": "rainbow forms sofa soft teal",
+   "source": "rawpixel",
+   "license": "cc0",
+   "landing": "https://www.rawpixel.com/image/5928307/photo-image-light-public-domain-house",
+   "url": "https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9zdGF0aWMvaW1hZ2Uvd2Vic2l0ZS8yMDIyLTA0L2xyL2JzMTQzMi1pbWFnZS1rd3Z5bTl3ai5qcGc.jpg"
+  },
+  "puzzle": {
+   "title": "Jigsaw puzzle table",
+   "source": "rawpixel",
+   "license": "cc0",
+   "landing": "https://www.rawpixel.com/image/5906723/photo-image-background-public-domain-blue",
+   "url": "https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9zdGF0aWMvaW1hZ2Uvd2Vic2l0ZS8yMDIyLTA0L2xyL3B4NzE1ODk2LWltYWdlLWt3dnY2cmx0LmpwZw.jpg"
+  },
+  "poster_wall": {
+   "title": "Free white interior design image",
+   "source": "rawpixel",
+   "license": "cc0",
+   "landing": "https://www.rawpixel.com/image/5927692/photo-image-frame-public-domain-mockup",
+   "url": "https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvZnJlZXJhbmdlcGV4ZWxzMDQzNTMtaW1hZ2Uta3d2eWowd2EuanBn.jpg"
+  },
+  "poster_cozy": {
+   "title": "A cozy interior wall featuring a large framed poster of a wine bottle, a soundbar mounted to the wall, a rustic wooden shelf with a decorative hand wheel and two brass-colored vases, and a second shelf holding various potted plants against a textured wall.",
+   "source": "wordpress",
+   "license": "cc0",
+   "landing": "https://wordpress.org/photos/photo/675663dc4e/",
+   "url": "https://pd.w.org/2024/05/675663dc4e5009040.27090676-2048x2048.jpg"
+  },
+  "canvas": {
+   "title": "Free picture frame wall image",
+   "source": "rawpixel",
+   "license": "cc0",
+   "landing": "https://www.rawpixel.com/image/5915820/image-frame-light-public-domain",
+   "url": "https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvbnMyMDg0NS1pbWFnZS1rd3Z3bW1mOS5qcGc.jpg"
+  },
+  "tshirt": {
+   "title": "",
+   "source": "rawpixel",
+   "license": "cc0",
+   "landing": "https://www.rawpixel.com/image/5943912/free-public-domain-cc0-photo",
+   "url": "https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvcHg4MTIxNjgtaW1hZ2Uta3d5b2U1cjguanBn.jpg"
+  },
+  "magnets": {
+   "title": "Vintage Polaroid Photo Wall",
+   "source": "rawpixel",
+   "license": "cc0",
+   "landing": "https://www.rawpixel.com/image/5966986/vintage-polaroid-photo-wall",
+   "url": "https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvbnMyMzQ0LWltYWdlLWt3eXJ6MW1vLmpwZw.jpg"
+  },
+  "envelope": {
+   "title": "Letter Valentine",
+   "source": "stocksnap",
+   "license": "cc0",
+   "landing": "https://stocksnap.io/photo/letter-valentine-P2KICW97HO",
+   "url": "https://cdn.stocksnap.io/img-thumbs/960w/P2KICW97HO.jpg"
+  },
+  "mug": {
+   "title": "Coffee Cup",
+   "source": "stocksnap",
+   "license": "cc0",
+   "landing": "https://stocksnap.io/photo/coffee-cup-2WTD0XFFSD",
+   "url": "https://cdn.stocksnap.io/img-thumbs/960w/2WTD0XFFSD.jpg"
+  },
+  "calendar-desk": {
+   "title": "Calendar Display",
+   "source": "stocksnap",
+   "license": "cc0",
+   "landing": "https://stocksnap.io/photo/calendar-display-ZI905NZJY1",
+   "url": "https://cdn.stocksnap.io/img-thumbs/960w/ZI905NZJY1.jpg"
+  }
+ }
+}

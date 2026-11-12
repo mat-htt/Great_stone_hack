@@ -23,7 +23,7 @@ export interface Page { id: string; template: string; slots: Slot[]; caption?: s
 export interface Layout { cover: Slot | null; pages: Page[]; title?: string }
 export interface Project {
   id: string; title: string; product_id: string; options: Record<string, string>; status: string; revision: number
-  share_code: string | null; owner_id: number; owner_name: string; pages_count: number; cover_photo_id: string | null
+  share_code: string | null; owner_id: number; owner_name: string; pages_count: number; cover_photo_id: string | null; kept?: boolean
   layout: Layout; photos: Photo[]; product: Product; members: { user_id: number; name: string }[]
   contributions: Record<string, number>; updated_at: string; role?: string
 }

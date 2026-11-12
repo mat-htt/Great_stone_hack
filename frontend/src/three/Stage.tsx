@@ -28,7 +28,18 @@ function AutoFit({ base, target, wide }: { base: [number, number, number]; targe
   return null
 }
 
+/** Снимок для каталога: ждём загрузки текстур, рендерим кадр и отдаём PNG. */
+function Capture({ onShot, delay = 2600 }: { onShot: (b: Blob) => void; delay?: number }) {
+  const { gl, scene, camera } = useThree()
+  useEffect(() => {
+    const t = setTimeout(() => { gl.render(scene, camera); gl.domElement.toBlob((b) => b && onShot(b), 'image/png') }, delay)
+    return () => clearTimeout(t)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  return null
+}
+
 export interface StageProps {
+  onShot?: (b: Blob) => void
   wide?: number
   children: ReactNode
   camera?: [number, number, number]
@@ -48,17 +59,18 @@ export interface StageProps {
 }
 
 export default function Stage({ children, camera = [0, 0.5, 3.4], target = [0, 0, 0], fov = 30, floor = -0.6, autoRotate = true, rotate = true,
-  minPolar = 0.25, maxPolar = Math.PI / 2 - 0.02, minDistance = 1.6, maxDistance = 6, shadowScale = 5, style, wide = 0.95, onPointerDown, onPointerUp }: StageProps) {
+  minPolar = 0.25, maxPolar = Math.PI / 2 - 0.02, minDistance = 1.6, maxDistance = 6, shadowScale = 5, style, wide = 0.95, onShot, onPointerDown, onPointerUp }: StageProps) {
   const [spin, setSpin] = useState(autoRotate)
   const idle = useRef<any>(null)
   useEffect(() => setSpin(autoRotate), [autoRotate])
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', touchAction: rotate ? 'none' : 'pan-y', ...style }} onPointerDown={onPointerDown} onPointerUp={onPointerUp}>
       <Canvas shadows dpr={[1, 2]} camera={{ position: camera, fov, near: 0.05, far: 50 }}
-        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance', preserveDrawingBuffer: !!onShot }}
         onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.02; gl.outputColorSpace = THREE.SRGBColorSpace }}>
         <StudioEnv />
         <AutoFit base={camera} target={target} wide={wide} />
+        {onShot && <Capture onShot={onShot} />}
         <hemisphereLight args={['#ffffff', '#c9c2b8', 0.35]} />
         <directionalLight position={[2.4, 4.2, 3.2]} intensity={1.5} castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0005} shadow-normalBias={0.02}>
           <orthographicCamera attach="shadow-camera" args={[-2, 2, 2, -2, 0.1, 12]} />
@@ -67,7 +79,7 @@ export default function Stage({ children, camera = [0, 0.5, 3.4], target = [0, 0
         {children}
         <ContactShadows position={[0, floor, 0]} opacity={0.42} scale={shadowScale} blur={2.4} far={2.2} resolution={512} frames={1} />
         <OrbitControls makeDefault enablePan={false} enableRotate={rotate} enableDamping dampingFactor={0.08} target={target}
-          autoRotate={spin} autoRotateSpeed={0.9} minPolarAngle={minPolar} maxPolarAngle={maxPolar} minDistance={minDistance} maxDistance={maxDistance * 2}
+          autoRotate={spin && !onShot} autoRotateSpeed={0.9} minPolarAngle={minPolar} maxPolarAngle={maxPolar} minDistance={minDistance} maxDistance={maxDistance * 2}
           onStart={() => { setSpin(false); clearTimeout(idle.current) }}
           onEnd={() => { clearTimeout(idle.current); if (autoRotate) idle.current = setTimeout(() => setSpin(true), 4500) }} />
       </Canvas>

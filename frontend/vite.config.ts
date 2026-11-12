@@ -26,6 +26,10 @@ export default defineConfig({
       },
       workbox: {
         navigateFallbackDenylist: [/^\/api/],
+        // новая сборка подхватывается сразу, без «залипания» старой версии в кэше
+        clientsClaim: true,
+        skipWaiting: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           { urlPattern: /\/api\/catalog/, handler: 'StaleWhileRevalidate', options: { cacheName: 'catalog' } },
           { urlPattern: /\/api\/gallery\/file\//, handler: 'CacheFirst', options: { cacheName: 'gallery' } },

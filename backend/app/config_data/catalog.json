@@ -669,12 +669,12 @@
         ],
         "papers": [
           {
-            "id": "gloss",
-            "label": "Глянец"
-          },
-          {
             "id": "matte",
             "label": "Мат"
+          },
+          {
+            "id": "gloss",
+            "label": "Глянец"
           }
         ],
         "template": "happy-new-year"
@@ -726,12 +726,12 @@
         ],
         "papers": [
           {
-            "id": "gloss",
-            "label": "Глянец"
-          },
-          {
             "id": "matte",
             "label": "Мат"
+          },
+          {
+            "id": "gloss",
+            "label": "Глянец"
           }
         ],
         "template": "for-mom"

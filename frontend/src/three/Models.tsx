@@ -191,7 +191,7 @@ function tabEdge(path: { bezierCurveTo: (...a: number[]) => void; lineTo: (x: nu
 export function Puzzle({ url, filter, aspect = 1.43 }: PhotoProps & { aspect?: number }) {
   const W = 1.2, H = W / aspect, cols = 6, rows = 4
   const signs = useMemo(() => { let s = 5; const r = () => ((s = (s * 9301 + 49297) % 233280) / 233280 > .5 ? 1 : -1); return { h: Array.from({ length: rows * cols }, r), v: Array.from({ length: rows * cols }, r) } }, [])
-  const hole = { c: 4, r: 1 }
+  const hole = { c: 1, r: 1 }
   const pieceShape = (ctx: any, c: number, r: number, k: number) => {
     const cw = W / cols * k, rh = H / rows * k
     const x0 = c * cw, y0 = r * rh
@@ -211,13 +211,19 @@ export function Puzzle({ url, filter, aspect = 1.43 }: PhotoProps & { aspect?: n
   }, [url, filter])
   const pieceTex = useCanvasTexture(() => photoCanvas(url, aspect, filter, 1400), [url, filter])
   const piece = useMemo(() => {
-    const s = new THREE.Shape(); pieceShape(s, hole.c, hole.r, 1)
+    // контур в координатах холста (Y вниз) → в 3D (Y вверх): переворачиваем Y прямо при построении, без отрицательного масштаба
+    const s = new THREE.Shape()
+    const flip = { moveTo: (x: number, y: number) => s.moveTo(x, -y), lineTo: (x: number, y: number) => s.lineTo(x, -y),
+      bezierCurveTo: (a: number, b: number, c: number, d: number, e: number, f: number) => s.bezierCurveTo(a, -b, c, -d, e, -f) }
+    pieceShape(flip, hole.c, hole.r, 1)
     const g = new THREE.ExtrudeGeometry(s, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.003, bevelSize: 0.003, bevelSegments: 2, curveSegments: 10 })
-    g.scale(1, -1, 1)   // ось Y холста смотрит вниз — разворачиваем, чтобы кусочек совпал с картинкой
+    const pos = g.attributes.position, uv = new Float32Array(pos.count * 2)
+    for (let i = 0; i < pos.count; i++) { uv[i * 2] = pos.getX(i) / W; uv[i * 2 + 1] = 1 + pos.getY(i) / H }
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
     g.translate(-(hole.c + .5) * W / cols, (hole.r + .5) * H / rows, 0)
     return g
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  const pt = useMemo(() => { if (!pieceTex) return null; const t = pieceTex.clone(); t.needsUpdate = true; t.repeat.set(1 / W, -1 / H); t.offset.set(0, 1); return t }, [pieceTex]) // eslint-disable-line react-hooks/exhaustive-deps
+  const pt = pieceTex
   const fly = useRef<THREE.Mesh>(null)
   useFrame(({ clock }) => { if (fly.current) { fly.current.position.y = 0.16 + Math.sin(clock.elapsedTime * 1.6) * 0.03; fly.current.rotation.z = Math.sin(clock.elapsedTime * .8) * 0.25 } })
   return (
@@ -229,7 +235,7 @@ export function Puzzle({ url, filter, aspect = 1.43 }: PhotoProps & { aspect?: n
         <meshStandardMaterial attach="material-5" color="#d9cbb6" />
       </mesh>
       <mesh ref={fly} geometry={piece} position={[(hole.c + .5) * W / cols - W / 2 + 0.05, 0.16, -((hole.r + .5) * H / rows - H / 2) + 0.18]} rotation={[-Math.PI / 2.6, 0, 0]} castShadow>
-        <meshPhysicalMaterial key={(pt)?.uuid ?? 'none'} map={pt} side={THREE.DoubleSide} {...paperProps('satin')} />
+        <meshPhysicalMaterial key={(pt)?.uuid ?? 'none'} map={pt} {...paperProps('matte')} />
       </mesh>
     </group>
   )
@@ -250,7 +256,7 @@ export function Pillow({ url, filter, satin = true }: PhotoProps & { satin?: boo
     }
     g.computeVertexNormals(); return g
   }, [])
-  const fabric = satin ? { roughness: 0.38, sheen: 1, sheenRoughness: 0.28, sheenColor: new THREE.Color('#ffffff'), clearcoat: 0.15 } : { roughness: 0.96, sheen: 0.4, sheenRoughness: 0.8, sheenColor: new THREE.Color('#ffffff') }
+  const fabric = satin ? { roughness: 0.55, sheen: 0.9, sheenRoughness: 0.35, sheenColor: new THREE.Color('#ffffff') } : { roughness: 0.96, sheen: 0.4, sheenRoughness: 0.8, sheenColor: new THREE.Color('#ffffff') }
   return (
     <group position={[0, 0, 0]} rotation={[-0.15, 0.4, 0.05]}>
       <mesh geometry={geo} castShadow receiveShadow><meshPhysicalMaterial key={(tex)?.uuid ?? 'none'} map={tex} {...fabric} /></mesh>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, House, LayoutGrid, Package, Plus, Sparkles, UserRound } from 'lucide-react'
-import { Mockup, PHOTO, shotFor } from './Mockup'
+import { productImage } from './Mockup'
 import { media, type Page, type Photo, type Slot } from '../api'
 import { useApp } from '../store'
 
@@ -37,7 +37,6 @@ const MAKE: { id: string; title: string; sub: string }[] = [
   { id: 'tshirt', title: 'Футболка', sub: 'S–XXL' }, { id: 'puzzle', title: 'Пазл', sub: '120 / 252' },
   { id: 'magnets', title: 'Магниты', sub: 'набор' }, { id: 'poster', title: 'Постер', sub: 'A3–A1' },
 ]
-const MOCK: Record<string, string> = { mug: 'mug', 'calendar-wall': 'calendar', postcard: 'card', canvas: 'canvas', pillow: 'pillow', tshirt: 'tshirt', puzzle: 'puzzle', magnets: 'magnet', poster: 'poster' }
 
 export function MakeSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const nav = useNavigate()
@@ -51,7 +50,7 @@ export function MakeSheet({ open, onClose }: { open: boolean; onClose: () => voi
       <div className="make-grid">
         {MAKE.map((m) => (
           <button key={m.id} className="make-item" onClick={() => go(`/catalog/${m.id}`)} aria-label={m.title}>
-            {PHOTO[m.id] ? <img src={PHOTO[m.id]} alt="" loading="lazy" /> : <div className="mk-art"><Mockup kind={MOCK[m.id] || 'mug'} src={shotFor(m.id)} size={74} /></div>}
+            <img src={productImage(m.id)} alt="" loading="lazy" />
             <span>{m.title}<small>{m.sub}</small></span>
           </button>
         ))}
@@ -274,10 +273,10 @@ export const plural = (n: number, one: string, few: string, many: string) => {
 
 // ---------- Карточка дизайна: настоящая мини-обложка, а не цветной квадрат ----------
 const SAMPLE: [RegExp, string][] = [
-  [/grad|player/, 'grad_06.jpg'], [/kinder|magic/, 'garden_03.jpg'], [/travel|cinema/, 'sea_00.jpg'], [/mom|wedding|meadow/, 'garden_05.jpg'],
-  [/autumn|collage/, 'lake_01.jpg'], [/moments|baby/, 'sea_09.jpg'], [/xmas|year|bauble|christmas|neon|stamp/, 'sea_00.jpg'],
+  [/grad|player|archive|cinema/, 'girl'], [/kinder|magic/, 'boy'], [/travel/, 'city'], [/mom|wedding|meadow/, 'mom'],
+  [/autumn|collage/, 'kids'], [/baby/, 'baby'], [/moments/, 'woman'], [/xmas|year|bauble|christmas|neon|stamp/, 'family'],
 ]
-export const sampleFor = (d: Design) => `/api/gallery/file/${SAMPLE.find(([r]) => r.test(d.id))?.[1] || 'lake_03.jpg'}`
+export const sampleFor = (d: Design) => `/samples/${SAMPLE.find(([r]) => r.test(d.id))?.[1] || 'girl'}.jpg`
 
 export function DesignCard({ d, on, onClick, title }: { d: Design; on?: boolean; onClick?: () => void; title?: string }) {
   const [x, y, w, h] = d.frame === 'circle' || d.frame === 'neon' ? [0.22, 0.12, 0.56, 0.56] : [0.16, 0.12, 0.68, 0.6]
@@ -286,7 +285,7 @@ export function DesignCard({ d, on, onClick, title }: { d: Design; on?: boolean;
       <div className="dc-page" style={{ background: d.bg ? `${d.page} url(${d.bg}) center / cover` : d.page }}>
         <Decor kind={d.decor} color={d.accent} />
         <div className="dc-photo" style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: `${w * 100}%`, height: `${h * 100}%`, ...frameStyle(d.frame, d.accent) }}>
-          <img src={media(sampleFor(d))} alt="" decoding="async" draggable={false} />
+          <img src={sampleFor(d)} alt="" decoding="async" draggable={false} />
         </div>
         <div className="dc-title" style={{ color: d.ink, fontFamily: FONT[d.font] || FONT.sans, fontWeight: d.font === 'sans' ? 750 : d.font === 'display' ? 700 : 400 }}>{title || d.name.split(' ·')[0]}</div>
       </div>
@@ -298,3 +297,31 @@ export function DesignCard({ d, on, onClick, title }: { d: Design; on?: boolean;
 /** Поводы для фильтра дизайнов */
 export const OCCASIONS = ['Все', 'новый год', 'выпускной', 'дети', 'свадьба', 'путешествия', 'семья']
 export const byOccasion = (list: Design[], occ: string) => occ === 'Все' ? list : list.filter((d) => d.tags.some((t) => t.toLowerCase().includes(occ)))
+
+
+/** Обложка книги так, как её напечатают: дизайн, фото в рамке, название; лёгкий корешок и блик ламината. */
+export function CoverView({ design, photo, title, aspect = 1, size = 220 }: { design?: Design; photo?: string | null; title?: string; aspect?: number; size?: number }) {
+  const d = design || FALLBACK_DESIGN
+  const w = aspect >= 1 ? size : size * aspect
+  const h = w / aspect
+  const [x, y, bw, bh] = d.frame === 'circle' || d.frame === 'neon' ? [0.2, 0.12, 0.6, 0.6 * aspect] : [0.14, 0.1, 0.72, 0.62]
+  return (
+    <div className="cover-view" style={{ width: w, height: h, background: d.bg ? `${d.page} url(${d.bg}) center / cover` : d.page }}>
+      {d.art ? (
+        <>
+          <Decor kind={d.decor} color={d.accent} />
+          <div className="dc-photo" style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: `${bw * 100}%`, height: `${bh * 100}%`, ...frameStyle(d.frame, d.accent) }}>
+            {photo && <img src={photo} alt="" draggable={false} />}
+          </div>
+          <div className="dc-title" style={{ color: d.ink, fontFamily: FONT[d.font] || FONT.sans, fontWeight: d.font === 'sans' ? 750 : d.font === 'display' ? 700 : 400, fontSize: '9.5cqw' }}>{title}</div>
+        </>
+      ) : (
+        <>
+          {photo && <img src={photo} alt="" draggable={false} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 55%, rgba(0,0,0,.5))' }} />
+          <div className="dc-title" style={{ color: '#fff', fontWeight: 750, fontSize: '8cqw' }}>{title}</div>
+        </>
+      )}
+    </div>
+  )
+}

@@ -4,8 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Shuffle } from 'lucide-react'
 import { api, media, type Photo, type Project } from '../api'
 import { Mascot } from '../components/Mascots'
-import { Mockup } from '../components/Mockup'
-import { aspectOf, PageView, useDesigns } from '../components/ui'
+import { aspectOf, CoverView, PageView, useDesigns } from '../components/ui'
 import { errorText, useApp } from '../store'
 
 interface Rej { id: string; reason: string; label: string }
@@ -67,7 +66,7 @@ export default function Magic() {
           ) : (
             <motion.div key="d" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="stack" style={{ gap: 18, alignItems: 'center', textAlign: 'center' }}>
               <div className="center" style={{ height: 250, width: '100%', borderRadius: 'var(--r-xl)', background: 'radial-gradient(70% 80% at 50% 100%, var(--glow-1), transparent)' }}>
-                {cover && <Mockup kind="book" src={media(`/api/media/${cover}?size=thumb`)} size={230} title={project?.title} />}
+                {cover && <CoverView design={design} photo={media(`/api/media/${cover}?size=preview`)} title={project?.title} aspect={project ? aspectOf(project.product, project.options.size) : 1} size={210} />}
               </div>
               <h1 className="t-h1">{project?.title}</h1>
               <div className="t-sm muted">{project?.layout.pages.length} страниц · {used} фото из {project?.photos.length}{removed.length ? ` · убрал ${removed.length} дублей и смазанных` : ''} · {(ms / 1000).toFixed(1)} с</div>

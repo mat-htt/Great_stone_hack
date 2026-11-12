@@ -4,7 +4,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Check, Copy, MessageCircle, RotateCcw, Send, Truck } from 'lucide-react'
 import { api, fmtDate, media, money, type Order, type Ticket } from '../api'
 import { Avatar } from '../components/Mascots'
-import { Mockup } from '../components/Mockup'
+import { productImage } from '../components/Mockup'
 import { flowIndex, ORDER_FLOW, Sheet, TopBar } from '../components/ui'
 import { errorText, useApp } from '../store'
 import TelegramSheet, { useTelegram } from '../components/Telegram'
@@ -45,7 +45,8 @@ export default function OrderDetail() {
         <motion.div className="card" initial={fresh ? { scale: .94, opacity: 0 } : false} animate={{ scale: 1, opacity: 1 }}
           style={{ background: 'radial-gradient(90% 120% at 100% 0%, var(--glow-1), transparent 60%), var(--surface)' }}>
           <div className="row" style={{ gap: 14 }}>
-            {o.project?.cover_photo_id ? <Mockup kind="book" src={media(`/api/media/${o.project.cover_photo_id}?size=thumb`)} size={84} /> : null}
+            {o.project?.cover_photo_id ? <img src={media(`/api/media/${o.project.cover_photo_id}?size=thumb`)} alt="" style={{ width: 76, height: 76, borderRadius: 16, objectFit: 'cover', boxShadow: '0 10px 20px -10px rgba(0,0,0,.4)' }} />
+              : <img src={productImage(o.product_id)} alt="" style={{ width: 76, height: 76, borderRadius: 16, objectFit: 'cover' }} />}
             <div className="grow">
               <div className="t-sm muted">{fresh ? 'Заказ оформлен' : o.status_label}</div>
               <h1 className="t-h2">{o.snapshot?.title}</h1>

@@ -215,3 +215,21 @@ def test_telegram_optional_link_and_status_messages(client, monkeypatch):
         for k in ("telegram_token", "telegram_bot_username"):
             db.delete(db.get(AppSetting, k))
         db.commit()
+
+
+def test_drafts_keep_rename_and_clear(client):
+    """Черновики: «сохранить» защищает от очистки, переименование, очистка удаляет только несохранённые."""
+    h = _guest(client)
+    up = client.post("/api/photos", files=[("files", ("d.jpg", _jpeg(1600, 1200), "image/jpeg"))], headers=h).json()
+    pid = up["photos"][0]["id"]
+    a = client.post("/api/projects", json={"product_id": "mug", "photo_ids": [pid]}, headers=h).json()
+    b = client.post("/api/projects", json={"product_id": "mug", "photo_ids": [pid]}, headers=h).json()
+    r = client.post(f"/api/projects/{a['id']}/meta", json={"keep": True, "title": "Кружка маме"}, headers=h)
+    assert r.status_code == 200 and r.json()["kept"] is True and r.json()["title"] == "Кружка маме"
+    cleared = client.delete("/api/projects", headers=h).json()
+    assert cleared["deleted"] == 1 and cleared["ids"] == [b["id"]]
+    ids = [p["id"] for p in client.get("/api/projects", headers=h).json()["items"]]
+    assert a["id"] in ids and b["id"] not in ids
+    assert any(p["id"] == pid for p in client.get("/api/photos", headers=h).json()["photos"])  # фото остались
+    other = _guest(client)
+    assert client.post(f"/api/projects/{a['id']}/meta", json={"keep": False}, headers=other).status_code in (403, 404)

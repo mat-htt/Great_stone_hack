@@ -236,11 +236,11 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .tile .tile-sub { font-size: 12.5px; color: var(--muted); position: relative; z-index: 2; font-weight: 550; }
 .tile .tile-art { position: absolute; right: -6px; bottom: -6px; z-index: 1; }
 .tile.big { grid-row: span 2; background: radial-gradient(120% 90% at 100% 100%, var(--glow-1), transparent 60%), var(--surface); }
-.tile.accent { color: var(--primary-ink); background:
+.tile.accent, .grad-accent { position: relative; color: var(--primary-ink); background:
   radial-gradient(70% 120% at 88% 100%, color-mix(in srgb, var(--glow-2) 70%, transparent), transparent 70%),
   radial-gradient(60% 90% at 0% 0%, color-mix(in srgb, #fff 22%, transparent), transparent 65%),
   linear-gradient(120deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 78%, var(--glow-3)) 55%, color-mix(in srgb, var(--primary) 62%, var(--glow-1)) 100%); }
-.tile.accent::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255,255,255,.35); pointer-events: none; }
+.tile.accent::after, .grad-accent::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255,255,255,.35); pointer-events: none; }
 .tile.accent .tile-sub { color: color-mix(in srgb, var(--primary-ink) 75%, transparent); }
 
 /* ---------- Фото-сетки ---------- */
@@ -450,3 +450,13 @@ table.t tbody tr:hover td { background: var(--fill); }
 .viewer3d .p3d { flex: 1; border-radius: 0; }
 .viewer3d .p3d-wrap { flex: 1; min-height: 0; }
 .viewer3d .p3d { height: 100% !important; }
+
+
+/* Обложка «как в печати» */
+.cover-view { position: relative; overflow: hidden; flex-shrink: 0; border-radius: 3px 9px 9px 3px; container-type: inline-size;
+  box-shadow: 0 26px 44px -20px rgba(0,0,0,.5), 0 3px 8px rgba(0,0,0,.14); }
+.cover-view::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 7%; z-index: 3; pointer-events: none;
+  background: linear-gradient(90deg, rgba(0,0,0,.28), rgba(255,255,255,.18) 45%, rgba(0,0,0,.08) 70%, transparent); }
+.cover-view::after { content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: linear-gradient(115deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 38%, rgba(255,255,255,0) 70%, rgba(255,255,255,.08) 100%); }
+.cover-view .dc-title { z-index: 2; }

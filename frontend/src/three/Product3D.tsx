@@ -23,10 +23,11 @@ export interface Product3DProps {
   filters?: Record<string, string>
   height?: number | string
   controls?: boolean
+  onShot?: (b: Blob) => void   // режим «фото для каталога»
 }
 
-const SAMPLES = ['sea_00', 'garden_03', 'lake_01', 'sea_06', 'sea_09', 'garden_05', 'lake_05', 'grad_02', 'sea_04', 'lake_03', 'garden_00', 'lake_06']
-  .map((n) => `/api/gallery/file/${n}.jpg`)
+// настоящие фото (кадры из открытых превью шаблонов picPac)
+const SAMPLES = ['family', 'kids', 'girl', 'mom', 'woman', 'city', 'boy', 'baby'].map((n) => `/samples/${n}.jpg`)
 const SAMPLE_TPL = ['frame', 'full', 'duo', 'text', 'trio', 'story', 'quad', 'frame', 'duo_h', 'full']
 const CAPTIONS = ['Здесь начиналось лето', 'Самые тёплые дни', 'Помним этот момент']
 
@@ -45,9 +46,9 @@ function sampleBook(images: string[]): { pages: Page[]; photos: Record<string, P
 }
 
 /** Мягкое покачивание для настенных изделий (вместо полного оборота). */
-function Sway({ children, amp = 0.4, on = true }: { children: ReactNode; amp?: number; on?: boolean }) {
+function Sway({ children, amp = 0.4, on = true, rest = 0 }: { children: ReactNode; amp?: number; on?: boolean; rest?: number }) {
   const g = useRef<THREE.Group>(null)
-  useFrame(({ clock }) => { if (g.current && on) g.current.rotation.y = Math.sin(clock.elapsedTime * 0.55) * amp })
+  useFrame(({ clock }) => { if (g.current) g.current.rotation.y = on ? Math.sin(clock.elapsedTime * 0.55) * amp : rest })
   return <group ref={g}>{children}</group>
 }
 
@@ -55,7 +56,7 @@ const NO_PHOTOS: Record<string, Photo> = {}
 const NO_FILTERS: Record<string, string> = {}
 const urlOf = (p?: Photo) => (p ? texUrl(p) : '')
 
-export default function Product3D({ product, options, images, filter, title, design, layout, photos = NO_PHOTOS, filters = NO_FILTERS, height = 340, controls = true }: Product3DProps) {
+export default function Product3D({ product, options, images, filter, title, design, layout, photos = NO_PHOTOS, filters = NO_FILTERS, height = 340, controls = true, onShot }: Product3DProps) {
   const kind = product.mockup
   const specs = product.specs
   const color = specs.colors?.find((c) => c.id === options.color)?.hex
@@ -110,7 +111,7 @@ export default function Product3D({ product, options, images, filter, title, des
       stage = { camera: [0, 2.75, 1.95], target: [0, -0.5, 0.12], wide: spread > 0 && spread < 1 + Math.ceil((book?.pageCount || 0) / 2) ? 1.5 : 1, floor: -0.52, autoRotate: false, rotate: orbit, minPolar: 0.15, maxPolar: 1.25, minDistance: 1.4, maxDistance: 4 }
       break
     case 'calendar':
-      model = cal && (cal.desk ? <Calendar3D src={cal} month={month} /> : <Sway on={!orbit} amp={0.3}><Calendar3D src={cal} month={month} /></Sway>)
+      model = cal && (cal.desk ? <Calendar3D src={cal} month={month} /> : <Sway on={!orbit && !onShot} rest={onShot ? -0.42 : 0} amp={0.3}><Calendar3D src={cal} month={month} /></Sway>)
       stage = cal?.desk ? { camera: [0, 0.4, 2.7], floor: -0.55, autoRotate: false } : { camera: [0, 0.12, 2.6], target: [0, 0.1, 0], floor: -0.52, autoRotate: false }
       break
     case 'prints':
@@ -118,15 +119,15 @@ export default function Product3D({ product, options, images, filter, title, des
       stage = { camera: [0, 1.9, 1.85], target: [0, -0.55, 0], floor: -0.556, minPolar: 0.1, maxPolar: 1.2 }
       break
     case 'magnet':
-      model = <Sway amp={0.35}><Magnets urls={images.length ? images : [img0, SAMPLES[2], SAMPLES[6], SAMPLES[8]]} filter={filter} finish={fin} /></Sway>
+      model = <Sway on={!onShot} rest={onShot ? -0.42 : 0} amp={0.35}><Magnets urls={images.length ? images : [img0, SAMPLES[2], SAMPLES[6], SAMPLES[8]]} filter={filter} finish={fin} /></Sway>
       stage = { camera: [0, 0.05, 2.9], floor: -0.75, autoRotate: false }
       break
     case 'poster':
-      model = <Sway amp={0.38}><Poster url={img0} filter={filter} finish={fin} aspect={aspect} /></Sway>
+      model = <Sway on={!onShot} rest={onShot ? -0.42 : 0} amp={0.38}><Poster url={img0} filter={filter} finish={fin} aspect={aspect} /></Sway>
       stage = { camera: [0, 0.05, 3.7], floor: -0.85, autoRotate: false }
       break
     case 'canvas':
-      model = <Sway amp={0.45}><CanvasArt url={img0} filter={filter} aspect={aspect} depth={options.cover === 'd4' ? 0.07 : 0.04} /></Sway>
+      model = <Sway on={!onShot} rest={onShot ? -0.42 : 0} amp={0.45}><CanvasArt url={img0} filter={filter} aspect={aspect} depth={options.cover === 'd4' ? 0.07 : 0.04} /></Sway>
       stage = { camera: [0, 0.15, 3.3], floor: -0.65, autoRotate: false }
       break
     case 'puzzle':
@@ -168,7 +169,7 @@ export default function Product3D({ product, options, images, filter, title, des
 
   return (
     <div className="p3d" style={{ height }}>
-      <Stage {...stage} rotate={stage.rotate ?? true}
+      <Stage {...stage} rotate={stage.rotate ?? true} onShot={onShot} autoRotate={onShot ? false : stage.autoRotate}
         onPointerDown={(e) => { if (flippable && !orbit) swipe.current = { x: e.clientX, y: e.clientY } }}
         onPointerUp={(e) => {
           const s = swipe.current; swipe.current = null
@@ -179,7 +180,7 @@ export default function Product3D({ product, options, images, filter, title, des
         }}>
         {model}
       </Stage>
-      {controls && (
+      {controls && !onShot && (
         <div className="p3d-ui">
           {flippable && (
             <div className="p3d-pager glass">
