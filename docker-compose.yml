@@ -27,6 +27,8 @@ services:
       - api
     ports:
       - "${PORT:-8080}:80"
+      # HTTPS — для микрофона на телефоне в локальной сети: https://<IP-компьютера>:8443
+      - "${HTTPS_PORT:-8443}:443"
 
   # Локальные модели на своём сервере: docker compose --profile local-ai up -d
   # затем: docker compose exec ollama ollama pull qwen3:8b

@@ -86,5 +86,32 @@
    "landing": "https://stocksnap.io/photo/calendar-display-ZI905NZJY1",
    "url": "https://cdn.stocksnap.io/img-thumbs/960w/ZI905NZJY1.jpg"
   }
- }
+ },
+ "unsplash": {
+  "tshirt": {
+   "page": "https://unsplash.com/photos/man-wearing-black-t-shirt-with-print-VlIAMeoM-00",
+   "license": "Unsplash License (free, no attribution required)"
+  },
+  "pillow": {
+   "page": "https://unsplash.com/photos/woman-holding-multicolored-floral-throw-pillow-iX10zeJA8po",
+   "license": "Unsplash License (free, no attribution required)"
+  },
+  "poster": {
+   "page": "https://unsplash.com/photos/green-plant-near-window-during-daytime-uhQzcTGkp6w",
+   "license": "Unsplash License (free, no attribution required)"
+  },
+  "canvas": {
+   "page": "https://unsplash.com/photos/a-babys-room-with-a-picture-of-a-man-and-woman-on-the-wall-ugWl2OPRDr0",
+   "license": "Unsplash License (free, no attribution required)"
+  },
+  "calendar-wall": {
+   "page": "https://unsplash.com/photos/a-plant-and-a-picture-on-a-wall-WxhIbQHJd4A",
+   "license": "Unsplash License (free, no attribution required)"
+  },
+  "mug": {
+   "page": "https://unsplash.com/photos/shallow-focus-photography-of-white-ceramic-mug-beside-green-leafed-plant-7R8vJXlnLzo",
+   "license": "Unsplash License (free, no attribution required)"
+  }
+ },
+ "note": "Футболка, подушка, постер, холст, настенный календарь, кружка — фото Unsplash (бесплатная лицензия Unsplash); остальные — CC0 через Openverse."
 }

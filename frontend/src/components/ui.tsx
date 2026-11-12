@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, House, LayoutGrid, Package, Plus, Sparkles, UserRound } from 'lucide-react'
 import { productImage } from './Mockup'
-import { media, type Page, type Photo, type Slot } from '../api'
+import { media, type Page, type Photo, type Slot, type TextStyle } from '../api'
 import { useApp } from '../store'
 
 export function Ambient() { return <div className="ambient" aria-hidden><i /><i /><i /></div> }
@@ -189,26 +189,92 @@ export function SlotView({ slot, photo, box, selected, issue, onClick, design, f
   )
 }
 
-export function PageView({ page, photos, aspect, selected, onSlot, issues, design = FALLBACK_DESIGN, filters }: {
+// ---------- Текст на страницах ----------
+export const FONT_LIST: { id: NonNullable<TextStyle['font']>; label: string }[] = [
+  { id: 'sans', label: 'Простой' }, { id: 'serif', label: 'Классика' }, { id: 'display', label: 'Заголовок' }, { id: 'script', label: 'Каллиграфия' }, { id: 'hand', label: 'От руки' },
+]
+export const TEXT_COLORS = ['#1A1A1A', '#FFFFFF', '#DD5757', '#364C49', '#B8892D', '#2F5DA8', '#8E5BB5', '#E8A0B4']
+/** Стили-шаблоны: шрифт + размер + регистр одним нажатием. */
+export const TEXT_STYLES: { id: string; label: string; st: TextStyle }[] = [
+  { id: 'classic', label: 'Классика', st: { font: 'serif', size: 1, upper: false } },
+  { id: 'script', label: 'Каллиграфия', st: { font: 'script', size: 1.15, upper: false } },
+  { id: 'title', label: 'Крупный заголовок', st: { font: 'display', size: 1.45, upper: false } },
+  { id: 'minimal', label: 'Минимализм', st: { font: 'sans', size: 0.72, upper: true } },
+  { id: 'note', label: 'Записка', st: { font: 'hand', size: 1.15, upper: false } },
+  { id: 'photo', label: 'На фото', st: { font: 'sans', size: 1.1, color: '#FFFFFF', pos: 'bottom', upper: false } },
+]
+export const TEXT_PRESETS = ['Наша история', 'Лето 2026', 'Самые счастливые дни', 'С днём рождения!', 'Путешествие мечты', 'Семья — это всё',
+  'Мой первый год', 'Выпускной 2027', 'Вместе навсегда', 'Люблю тебя', 'Лучшие друзья', 'Новый год 2027', 'Продолжение следует…']
+const SCRIPTY = (f?: string) => f === 'script' || f === 'hand'
+
+export function textCss(ts: TextStyle | undefined, d: Design, base: number, over = false, cover = false): React.CSSProperties {
+  const font = ts?.font || d.font
+  const white = (ts?.color || '').toUpperCase() === '#FFFFFF'
+  return {
+    color: ts?.color || (over ? '#fff' : d.ink), fontFamily: FONT[font] || FONT.sans,
+    fontWeight: font === 'sans' || font === 'display' ? 700 : SCRIPTY(font) ? 400 : 500,
+    fontSize: (base * (ts?.size || 1) * (SCRIPTY(font) && !cover ? 1.3 : 1)).toFixed(2) + 'cqw', textAlign: ts?.align || 'center',
+    textTransform: ts?.upper ? 'uppercase' : undefined, letterSpacing: ts?.upper ? '.09em' : undefined,
+    textShadow: over || white ? '0 1px 2px rgba(0,0,0,.55), 0 2px 14px rgba(0,0,0,.35)' : undefined,
+    whiteSpace: cover ? 'pre' : 'pre-wrap', lineHeight: 1.12, overflowWrap: cover ? undefined : 'anywhere',
+  }
+}
+
+/** Текст, который редактируется прямо на странице (contentEditable без «прыжков» курсора). */
+export function EditableText({ value, editing, onChange, onActivate, style, className, placeholder, label = 'Текст на странице' }: {
+  value: string; editing?: boolean; onChange?: (t: string) => void; onActivate?: () => void
+  style?: React.CSSProperties; className?: string; placeholder?: string; label?: string
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => { const el = ref.current; if (el && document.activeElement !== el && el.innerText !== value) el.innerText = value }, [value])
+  useEffect(() => {
+    const el = ref.current
+    if (!editing || !el) return
+    el.focus({ preventScroll: true })
+    const r = document.createRange(); r.selectNodeContents(el); r.collapse(false)
+    const s = window.getSelection(); s?.removeAllRanges(); s?.addRange(r)
+  }, [editing])
+  return (
+    <div ref={ref} className={'etext ' + (className || '') + (editing ? ' editing' : '') + (onActivate ? ' can' : '')} style={style} data-placeholder={placeholder}
+      contentEditable={!!editing} suppressContentEditableWarning spellCheck={false} role={onActivate ? 'textbox' : undefined} aria-label={onActivate ? label : undefined}
+      tabIndex={onActivate && !editing ? 0 : undefined}
+      onInput={(e) => onChange?.(e.currentTarget.innerText.replace(/\n$/, ''))}
+      onPointerDown={(e) => { if (onActivate) e.stopPropagation() }}
+      onClick={(e) => { if (onActivate) { e.stopPropagation(); if (!editing) onActivate() } }}
+      onKeyDown={(e) => { if (!editing && onActivate && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onActivate() } if (e.key === 'Escape') (e.currentTarget as HTMLElement).blur() }} />
+  )
+}
+
+export function PageView({ page, photos, aspect, selected, onSlot, issues, design = FALLBACK_DESIGN, filters, textEditing, onText, onCaption }: {
   page: Page; photos: Record<string, Photo>; aspect: number; selected?: number | null; onSlot?: (i: number) => void
   issues?: Record<string, 'critical' | 'warning'>; design?: Design; filters?: Record<string, string>
+  textEditing?: boolean; onText?: () => void; onCaption?: (t: string) => void
 }) {
   const tpl = TEMPLATES[page.template] || TEMPLATES.full
-  const capStyle: React.CSSProperties = { color: design.ink, fontFamily: FONT[design.font] || FONT.sans, fontWeight: design.font === 'sans' ? 700 : 500 }
+  const ts = page.text
+  const capArea = !!tpl.caption && tpl.slots.length > 0
+  const over = tpl.slots.length > 0 && !tpl.caption // текст поверх фото
+  const showText = !tpl.slots.length || capArea || !!page.caption || !!textEditing
+  const just = ts?.pos === 'top' ? 'flex-start' : ts?.pos === 'middle' ? 'center' : 'flex-end'
   return (
     <div className="bookpage" style={{ aspectRatio: String(aspect), background: design.bg ? `${design.page} url(${design.bg}) center / cover` : design.page, containerType: 'inline-size' }}>
       <Decor kind={design.decor} color={design.accent} />
       {!tpl.slots.length ? (
-        <div className="center" style={{ position: 'absolute', inset: '16%', flexDirection: 'column', gap: 8, textAlign: 'center' }}>
-          <div style={{ width: 26, height: 2, background: design.accent, borderRadius: 2 }} />
-          <div style={{ ...capStyle, fontSize: design.font === 'script' || design.font === 'hand' ? '10cqw' : '7.5cqw', lineHeight: 1.1 }}>{page.caption || 'Ваш текст'}</div>
+        <div style={{ position: 'absolute', inset: '12%', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'stretch', justifyContent: ts?.pos ? just : 'center' }}>
+          <div style={{ width: 26, height: 2, background: design.accent, borderRadius: 2, alignSelf: ts?.align === 'left' ? 'flex-start' : ts?.align === 'right' ? 'flex-end' : 'center' }} />
+          <EditableText value={page.caption || ''} editing={textEditing} onChange={onCaption} onActivate={onText} style={textCss(ts, design, 7.5)} placeholder={onText ? 'Нажмите, чтобы написать' : 'Ваш текст'} />
         </div>
       ) : page.slots.map((s, i) => (
         <SlotView key={i} slot={s} photo={s.photo_id ? photos[s.photo_id] : undefined} box={insetBox(tpl.slots[Math.min(i, tpl.slots.length - 1)], design.inset)} design={design}
           selected={selected === i} issue={issues?.[`${i}`] ?? null} onClick={onSlot ? () => onSlot(i) : undefined}
           filter={s.photo_id ? filters?.[s.photo_id] : undefined} />
       ))}
-      {tpl.caption && tpl.slots.length > 0 && <div className="caption" style={capStyle}>{page.caption || ''}</div>}
+      {tpl.slots.length > 0 && showText && (
+        <div className={`cap-box ${capArea ? 'area' : 'over'}`} style={capArea ? undefined : { justifyContent: just }}>
+          <EditableText value={page.caption || ''} editing={textEditing} onChange={onCaption} onActivate={onText} style={textCss(ts, design, 5, over)}
+            placeholder={onText ? (capArea ? 'Нажмите, чтобы добавить подпись' : 'Ваш текст') : ''} />
+        </div>
+      )}
     </div>
   )
 }
@@ -300,7 +366,10 @@ export const byOccasion = (list: Design[], occ: string) => occ === 'Все' ? li
 
 
 /** Обложка книги так, как её напечатают: дизайн, фото в рамке, название; лёгкий корешок и блик ламината. */
-export function CoverView({ design, photo, title, aspect = 1, size = 220 }: { design?: Design; photo?: string | null; title?: string; aspect?: number; size?: number }) {
+export function CoverView({ design, photo, title, aspect = 1, size = 220, titleStyle, titleEditing, onTitleClick, onTitle }: {
+  design?: Design; photo?: string | null; title?: string; aspect?: number; size?: number
+  titleStyle?: TextStyle; titleEditing?: boolean; onTitleClick?: () => void; onTitle?: (t: string) => void
+}) {
   const d = design || FALLBACK_DESIGN
   const w = aspect >= 1 ? size : size * aspect
   const h = w / aspect
@@ -313,13 +382,13 @@ export function CoverView({ design, photo, title, aspect = 1, size = 220 }: { de
           <div className="dc-photo" style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: `${bw * 100}%`, height: `${bh * 100}%`, ...frameStyle(d.frame, d.accent) }}>
             {photo && <img src={photo} alt="" draggable={false} />}
           </div>
-          <div className="dc-title" style={{ color: d.ink, fontFamily: FONT[d.font] || FONT.sans, fontWeight: d.font === 'sans' ? 750 : d.font === 'display' ? 700 : 400, fontSize: '9.5cqw' }}>{title}</div>
+          <div className="dc-title"><EditableText value={title || ''} editing={titleEditing} onChange={onTitle} onActivate={onTitleClick} label="Название на обложке" placeholder={onTitleClick ? 'Название' : ''} style={textCss(titleStyle, d, 9.5, false, true)} /></div>
         </>
       ) : (
         <>
           {photo && <img src={photo} alt="" draggable={false} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 55%, rgba(0,0,0,.5))' }} />
-          <div className="dc-title" style={{ color: '#fff', fontWeight: 750, fontSize: '8cqw' }}>{title}</div>
+          <div className="dc-title"><EditableText value={title || ''} editing={titleEditing} onChange={onTitle} onActivate={onTitleClick} label="Название на обложке" placeholder={onTitleClick ? 'Название' : ''} style={textCss({ font: 'sans', color: '#FFFFFF', ...titleStyle }, d, 8, true, true)} /></div>
         </>
       )}
     </div>

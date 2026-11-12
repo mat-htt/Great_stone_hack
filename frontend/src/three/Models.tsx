@@ -21,7 +21,7 @@ async function photoCanvas(url: string, aspect: number, filter?: string, px = 10
 // ---------------- Кружка ----------------
 const R = 0.42
 const GAP = 0.42 // зазор под ручку, рад
-export function Mug({ url, filter, inner = '#ffffff', chameleon = false, hot = true }: PhotoProps & { inner?: string; chameleon?: boolean; hot?: boolean }) {
+export function Mug({ url, filter, color = '#ffffff', chameleon = false, hot = true }: PhotoProps & { color?: string; chameleon?: boolean; hot?: boolean }) {
   const thetaStart = Math.PI / 2 + GAP / 2
   const thetaLen = Math.PI * 2 - GAP
   const printH = 0.8
@@ -29,7 +29,8 @@ export function Mug({ url, filter, inner = '#ffffff', chameleon = false, hot = t
     const L = R * thetaLen
     const W = 2048, H = Math.round(W * printH / L)
     const c = canvas(W, H); const x = c.getContext('2d')!
-    x.fillStyle = chameleon ? '#ffffff' : '#ffffff'; x.fillRect(0, 0, W, H)
+    // фон прозрачный: вокруг фото видна сама кружка своего цвета; у «хамелеона» печать — на белом слое
+    if (chameleon) { x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H) }
     const im = await loadImage(url)
     if (im) {
       const uFront = ((Math.PI * 2 - thetaStart) % (Math.PI * 2)) / thetaLen
@@ -66,16 +67,16 @@ export function Mug({ url, filter, inner = '#ffffff', chameleon = false, hot = t
     if (bodyMat.current) bodyMat.current.color.copy(black).lerp(white, heat.current)
   })
   const ceramic = { roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.03 }
-  const body = chameleon ? '#141414' : '#fbfbfa'
+  const body = chameleon ? '#141414' : color
   return (
     <group position={[0, -0.08, 0]} rotation={[0, -0.5, 0]}>
-      <mesh geometry={outer} castShadow receiveShadow><meshPhysicalMaterial ref={bodyMat} color={body} {...ceramic} /></mesh>
-      <mesh geometry={innerGeo}><meshPhysicalMaterial color={chameleon ? '#141414' : inner} side={THREE.DoubleSide} {...ceramic} /></mesh>
-      <mesh geometry={handle} castShadow><meshPhysicalMaterial color={chameleon ? '#141414' : inner} {...ceramic} /></mesh>
+      <mesh geometry={outer} castShadow receiveShadow><meshPhysicalMaterial key={'b' + body} ref={bodyMat} color={body} {...ceramic} /></mesh>
+      <mesh geometry={innerGeo}><meshPhysicalMaterial color={body} side={THREE.DoubleSide} {...ceramic} /></mesh>
+      <mesh geometry={handle} castShadow><meshPhysicalMaterial key={'h' + body} color={body} {...ceramic} /></mesh>
       {tex && (
         <mesh position={[0, 0.02, 0]}>
           <cylinderGeometry args={[R + 0.0015, R + 0.0015, printH, 160, 1, true, thetaStart, thetaLen]} />
-          <meshPhysicalMaterial key={(tex)?.uuid ?? 'none'} ref={printMat} map={tex} transparent={chameleon} opacity={chameleon ? (hot ? 1 : 0) : 1} {...ceramic} polygonOffset polygonOffsetFactor={-2} />
+          <meshPhysicalMaterial key={(tex)?.uuid ?? 'none'} ref={printMat} map={tex} transparent opacity={chameleon ? (hot ? 1 : 0) : 1} alphaTest={chameleon ? 0 : 0.02} depthWrite={false} {...ceramic} polygonOffset polygonOffsetFactor={-2} />
         </mesh>
       )}
     </group>

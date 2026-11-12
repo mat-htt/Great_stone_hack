@@ -233,3 +233,27 @@ def test_drafts_keep_rename_and_clear(client):
     assert any(p["id"] == pid for p in client.get("/api/photos", headers=h).json()["photos"])  # фото остались
     other = _guest(client)
     assert client.post(f"/api/projects/{a['id']}/meta", json={"keep": False}, headers=other).status_code in (403, 404)
+
+
+def test_page_text_is_editable_and_sanitized(client):
+    """Текст на страницах: подпись и оформление сохраняются, лишние поля и опасные значения отбрасываются."""
+    h = _guest(client)
+    up = client.post("/api/photos", files=[("files", ("t.jpg", _jpeg(1600, 1200), "image/jpeg"))], headers=h).json()
+    p = client.post("/api/projects", json={"product_id": "book-classic", "photo_ids": [up["photos"][0]["id"]]}, headers=h).json()
+    layout = p["layout"]
+    layout["pages"][0]["caption"] = "Лето у бабушки" + "!" * 400
+    layout["pages"][0]["text"] = {"font": "script", "size": 9, "color": "#DD5757", "align": "left", "upper": True, "pos": "top",
+                                  "evil": "<script>", "font_url": "http://x"}
+    layout["title_style"] = {"font": "comic", "color": "red", "size": 1.2}
+    r = client.put(f"/api/projects/{p['id']}", json={"layout": layout, "revision": p["revision"], "title": "Наша история"}, headers=h)
+    assert r.status_code == 200
+    saved = client.get(f"/api/projects/{p['id']}", headers=h).json()
+    pg = saved["layout"]["pages"][0]
+    assert pg["caption"].startswith("Лето у бабушки") and len(pg["caption"]) == 300
+    assert pg["text"] == {"font": "script", "size": 2.5, "color": "#DD5757", "align": "left", "pos": "top", "upper": True}
+    assert saved["layout"]["title_style"] == {"size": 1.2} and saved["title"] == "Наша история"
+
+
+def test_voice_status_reports_engine(client):
+    r = client.get("/api/voice/status").json()
+    assert set(r) >= {"server", "engine", "rate"} and r["rate"] == 16000

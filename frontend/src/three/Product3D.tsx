@@ -81,7 +81,7 @@ export default function Product3D({ product, options, images, filter, title, des
     return {
       aspect, pageCount: own.pages.length, cover: options.cover, color, paper: options.paper,
       paintPage: async (i) => { await fontsReady(); return paintPage(own.pages[i], own.photos, d, aspect, 1024, filters) },
-      paintCover: async () => { await fontsReady(); return paintCover({ photoUrl: coverUrl, crop: layout?.cover?.crop, title: title || product.title, d, aspect, cover: options.cover, color, filter: coverId ? filters[coverId] : undefined }) },
+      paintCover: async () => { await fontsReady(); return paintCover({ photoUrl: coverUrl, crop: layout?.cover?.crop, title: title || product.title, d, aspect, titleStyle: layout?.title_style, cover: options.cover, color, filter: coverId ? filters[coverId] : undefined }) },
     }
   }, [kind, layout, photos, images, aspect, options.cover, options.paper, color, d, title, filters]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -103,7 +103,7 @@ export default function Product3D({ product, options, images, filter, title, des
   let stage: Partial<React.ComponentProps<typeof Stage>> = {}
   switch (kind) {
     case 'mug':
-      model = <Mug url={img0} filter={filter} inner={color} chameleon={options.cover === 'chameleon'} hot={hot} />
+      model = <Mug url={img0} filter={filter} color={color} chameleon={options.cover === 'chameleon'} hot={hot} />
       stage = { camera: [0, 0.32, 3.1], floor: -0.58 }
       break
     case 'book':

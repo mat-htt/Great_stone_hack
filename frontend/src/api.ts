@@ -19,8 +19,13 @@ export interface Photo {
   advice: Advice[]
 }
 export interface Slot { photo_id: string | null; crop: { x: number; y: number; zoom: number } }
-export interface Page { id: string; template: string; slots: Slot[]; caption?: string }
-export interface Layout { cover: Slot | null; pages: Page[]; title?: string }
+/** Оформление текста на странице/обложке. Всё необязательно — по умолчанию берётся из дизайна. */
+export interface TextStyle {
+  font?: 'sans' | 'serif' | 'hand' | 'script' | 'display'; size?: number; color?: string
+  align?: 'left' | 'center' | 'right'; upper?: boolean; pos?: 'top' | 'middle' | 'bottom'
+}
+export interface Page { id: string; template: string; slots: Slot[]; caption?: string; text?: TextStyle }
+export interface Layout { cover: Slot | null; pages: Page[]; title?: string; title_style?: TextStyle }
 export interface Project {
   id: string; title: string; product_id: string; options: Record<string, string>; status: string; revision: number
   share_code: string | null; owner_id: number; owner_name: string; pages_count: number; cover_photo_id: string | null; kept?: boolean

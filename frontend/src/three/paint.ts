@@ -1,6 +1,6 @@
 // Рисование текстур для 3D: фото с кадрированием и фильтром, страницы книги по макету и дизайну,
 // обложки, листы календаря. Всё на <canvas>, поэтому 3D-модель показывает ровно то, что уйдёт в печать.
-import { media, type Page, type Photo } from '../api'
+import { media, type Page, type Photo, type TextStyle } from '../api'
 import { FONT, FALLBACK_DESIGN, insetBox, TEMPLATES, type Design } from '../components/ui'
 
 const cache = new Map<string, Promise<HTMLImageElement | null>>()
@@ -103,6 +103,30 @@ function text(ctx: CanvasRenderingContext2D, d: Design, str: string, x: number, 
   ctx.fillText(str, x, y)
 }
 
+/** Текст с оформлением пользователя (шрифт, размер, цвет, выравнивание, регистр, положение), несколько строк. */
+function styledText(ctx: CanvasRenderingContext2D, d: Design, str: string, ts: TextStyle | undefined, bx: number, by: number, bw: number, bh: number, base: number, over = false, defPos: 'top' | 'middle' | 'bottom' = 'bottom') {
+  if (!str) return
+  const font = ts?.font || d.font
+  const scripty = font === 'script' || font === 'hand'
+  const weight = font === 'sans' || font === 'display' ? 700 : scripty ? 400 : 500
+  let fs = base * (ts?.size || 1) * (scripty ? 1.3 : 1)
+  const lines = (ts?.upper ? str.toUpperCase() : str).split('\n')
+  const c = ctx as CanvasRenderingContext2D & { letterSpacing?: string }
+  const setF = () => { ctx.font = weight + ' ' + fs + 'px ' + (FONT[font] || FONT.sans); c.letterSpacing = ts?.upper ? fs * 0.09 + 'px' : '0px' }
+  setF()
+  while (Math.max(...lines.map((l) => ctx.measureText(l).width)) > bw && fs > 8) { fs *= 0.92; setF() }
+  const lh = fs * 1.12, total = lh * lines.length
+  const align = ts?.align || 'center'
+  const x = align === 'left' ? bx : align === 'right' ? bx + bw : bx + bw / 2
+  const pos = ts?.pos || defPos
+  const y0 = pos === 'top' ? by : pos === 'middle' ? by + (bh - total) / 2 : by + bh - total
+  const color = ts?.color || (over ? '#ffffff' : d.ink)
+  ctx.textAlign = align; ctx.textBaseline = 'top'; ctx.fillStyle = color
+  if (over || color.toUpperCase() === '#FFFFFF') { ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = fs * 0.25; ctx.shadowOffsetY = fs * 0.04 }
+  lines.forEach((l, i) => ctx.fillText(l, x, y0 + i * lh))
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; c.letterSpacing = '0px'
+}
+
 export async function fontsReady() { try { await (document as any).fonts?.ready } catch { /* noop */ } }
 
 /** Страница книги/календаря по макету: фон дизайна, рамки, фото, подписи. */
@@ -114,7 +138,7 @@ export async function paintPage(page: Page | undefined, photos: Record<string, P
   const tpl = TEMPLATES[page.template] || TEMPLATES.full
   if (!tpl.slots.length) {
     ctx.fillStyle = d.accent; ctx.fillRect(W / 2 - W * .03, H * .42, W * .06, H * .006)
-    text(ctx, d, page.caption || '', W / 2, H * .52, W * .7, W * (d.font === 'script' || d.font === 'hand' ? .1 : .075))
+    styledText(ctx, d, page.caption || '', page.text, W * .12, H * .45, W * .76, H * .43, W * .075, false, 'top')
     return c
   }
   for (let i = 0; i < page.slots.length; i++) {
@@ -125,12 +149,15 @@ export async function paintPage(page: Page | undefined, photos: Record<string, P
     const im = s.photo_id ? await loadImage(texUrl(ph, s.photo_id)) : null
     framedPhoto(ctx, im, (bx + pad) * W, (by + pad) * H, (bw - 2 * pad) * W, (bh - 2 * pad) * H, d, s.crop, s.photo_id ? filters[s.photo_id] : undefined)
   }
-  if (tpl.caption && page.caption) text(ctx, d, page.caption, W / 2, H * .9, W * .84, W * .055)
+  if (page.caption) {
+    if (tpl.caption) styledText(ctx, d, page.caption, { ...page.text, pos: 'middle' }, W * .07, H * .76, W * .86, H * .21, W * .05)
+    else styledText(ctx, d, page.caption, page.text, W * .06, H * .06, W * .88, H * .88, W * .05, true)
+  }
   return c
 }
 
 /** Фотообложка: дизайн + фото + название. Для ткани/экокожи — фактура и тиснение. */
-export async function paintCover(opts: { photoUrl?: string; crop?: Partial<Crop>; title: string; d: Design; aspect: number; cover?: string; color?: string; filter?: string }, px = 1024) {
+export async function paintCover(opts: { photoUrl?: string; crop?: Partial<Crop>; title: string; d: Design; aspect: number; cover?: string; color?: string; filter?: string; titleStyle?: TextStyle }, px = 1024) {
   const { d, aspect } = opts
   const W = aspect >= 1 ? px : px * aspect, H = aspect >= 1 ? px / aspect : px
   const c = canvas(W, H); const ctx = c.getContext('2d')!
@@ -154,12 +181,12 @@ export async function paintCover(opts: { photoUrl?: string; crop?: Partial<Crop>
   if (d.art) {
     const [x, y, w, h] = d.frame === 'circle' || d.frame === 'neon' ? [.2, .12, .6, .6 * aspect] : [.14, .1, .72, .62]
     framedPhoto(ctx, im, x * W, y * H, w * W, h * H, d, opts.crop, opts.filter)
-    text(ctx, d, opts.title, W / 2, H * .86, W * .8, W * (d.font === 'script' || d.font === 'hand' ? .1 : .075))
+    styledText(ctx, d, opts.title, { pos: 'middle', ...opts.titleStyle }, W * .1, H * .76, W * .8, H * .2, W * .095)
   } else {
     if (im) drawCover(ctx, im, 0, 0, W, H, opts.crop, opts.filter)
     const g = ctx.createLinearGradient(0, H * .55, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.55)')
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
-    text(ctx, { ...d, font: 'sans' } as Design, opts.title, W / 2, H * .86, W * .8, W * .08, 'center', '#fff')
+    styledText(ctx, d, opts.title, { font: 'sans', color: '#FFFFFF', pos: 'middle', ...opts.titleStyle }, W * .1, H * .76, W * .8, H * .2, W * .08, true)
   }
   return c
 }

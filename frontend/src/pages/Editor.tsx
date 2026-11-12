@@ -6,13 +6,14 @@ import { arrayMove, horizontalListSortingStrategy, SortableContext, sortableKeyb
 import { CSS } from '@dnd-kit/utilities'
 import {
   Box, ChevronLeft, ChevronRight, Crop, X, Droplets, Expand, Focus, Frame, History, ImagePlus, LayoutTemplate, Loader2, Mic, Palette,
-  Plus, Quote, RotateCw, ScanFace, Scissors, Send, Share2, Shuffle, SlidersHorizontal, Sparkles, Stars, Trash2, Undo2, Users, Wand2, Copy, Replace,
+  Plus, Quote, RotateCw, ScanFace, Scissors, Send, Share2, Shuffle, Square, Type, AlignLeft, AlignCenter, AlignRight, CaseUpper, SlidersHorizontal, Sparkles, Stars, Trash2, Undo2, Users, Wand2, Copy, Replace,
 } from 'lucide-react'
-import { api, ApiError, media, track, type AiTool, type Layout, type Page, type Photo, type Preflight, type Project } from '../api'
+import { api, ApiError, media, track, type AiTool, type Layout, type Page, type Photo, type Preflight, type Project, type TextStyle } from '../api'
 import { Avatar, MASCOT } from '../components/Mascots'
 import View3D from '../components/View3D'
-import { aspectOf, BeforeAfter, byOccasion, CoverView, DesignCard, OCCASIONS, PageView, Sheet, TEMPLATES, useDesigns, type Design } from '../components/ui'
+import { aspectOf, BeforeAfter, byOccasion, CoverView, DesignCard, FONT, FONT_LIST, OCCASIONS, PageView, Sheet, TEMPLATES, TEXT_COLORS, TEXT_PRESETS, TEXT_STYLES, useDesigns, type Design } from '../components/ui'
 import { errorText, getLocal, pushDraft, saveLocal, useApp } from '../store'
+import { useVoice } from '../lib/voice'
 
 const ICON: Record<string, any> = { wand: Wand2, expand: Expand, focus: Focus, drop: Droplets, face: ScanFace, history: History, scissors: Scissors, palette: Palette, frame: Frame, sliders: SlidersHorizontal, stars: Stars }
 const FILTERS: { id: string; label: string; css: string }[] = [
@@ -22,7 +23,7 @@ const FILTERS: { id: string; label: string; css: string }[] = [
   { id: 'vintage', label: 'Винтаж', css: 'sepia(.5) contrast(.9) brightness(1.05)' }, { id: 'soft', label: 'Мягкий', css: 'brightness(1.06) contrast(.9) saturate(.95)' },
 ]
 const SUGGEST = ['Сделай всё теплее', 'Добавь чёткости', 'Перемешай страницы', 'Подбери обложку', 'Убери 2-ю страницу']
-type Tab = 'layout' | 'filters' | 'enhance' | 'crop'
+type Tab = 'layout' | 'text' | 'filters' | 'enhance' | 'crop'
 type Sel = { page: number; slot: number } | null
 type Save = 'saved' | 'saving' | 'offline' | 'error'
 
@@ -51,7 +52,9 @@ export default function Editor() {
   const [catOpen, setCatOpen] = useState(false)
   const [chat, setChat] = useState<{ me: boolean; text: string; wait?: boolean }[]>([])
   const [text, setText] = useState('')
-  const [listening, setListening] = useState(false)
+  const voiceBase = useRef('')
+  const textInput = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => { const el = textInput.current; if (!el) return; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 112) + 'px'; el.scrollTop = el.scrollHeight }, [text])
   const [designOpen, setDesignOpen] = useState(false)
   const [view3d, setView3d] = useState(false)
   const [occ, setOcc] = useState('Все')
@@ -111,6 +114,27 @@ export default function Editor() {
     history.current = [...history.current.slice(-30), { layout, title }]
     setLayout(next); setTitle(nextTitle); persist(next, nextTitle, revision)
   }
+  const textSnap = useRef<ReturnType<typeof setTimeout> | 0>(0)
+  const snapText = () => {
+    if (!textSnap.current && layout) history.current = [...history.current.slice(-30), { layout, title }]
+    if (textSnap.current) clearTimeout(textSnap.current)
+    textSnap.current = setTimeout(() => { textSnap.current = 0 }, 1500)
+  }
+  const editPageText = (pi: number, upd: { caption?: string; text?: TextStyle }) => {
+    if (!canEdit || !layout || pi < 0 || !layout.pages[pi]) return
+    snapText()
+    const next = structuredClone(layout) as Layout; const pg = next.pages[pi]
+    if (upd.caption !== undefined) pg.caption = upd.caption.slice(0, 300)
+    if (upd.text) pg.text = { ...(pg.text || {}), ...upd.text }
+    setLayout(next); persist(next, title, revision)
+  }
+  const editTitle = (t?: string, st?: TextStyle) => {
+    if (!canEdit || !layout) return
+    snapText()
+    const next = st ? { ...layout, title_style: { ...(layout.title_style || {}), ...st } } : layout
+    const nt = t !== undefined ? t.slice(0, 120) : title
+    setLayout(next); setTitle(nt); persist(next, nt.trim() || title, revision)
+  }
   const flush = async () => {
     clearTimeout(saveTimer.current)
     if (!project || !layout || save === 'saved') return
@@ -169,7 +193,11 @@ export default function Editor() {
 
   // авто-выбор фото для вкладок, работающих с одним снимком
   const firstSlot = (): Sel => { for (const pi of curPages) { if (pi < 0) continue; const si = pages[pi]?.slots.findIndex((s) => s.photo_id); if (si >= 0) return { page: pi, slot: si } } return null }
-  useEffect(() => { if (isSingle && !sel) { setSel({ page: 0, slot: 0 }); return } if (tab !== 'layout' && !sel) setSel(firstSlot()) }, [tab, cell, layout, isSingle])
+  useEffect(() => { if (isSingle && !sel) { setSel({ page: 0, slot: 0 }); return } if (tab !== 'layout' && tab !== 'text' && !sel) setSel(firstSlot()) }, [tab, cell, layout, isSingle])
+  const [textSel, setTextSel] = useState<number | null>(null)
+  useEffect(() => { setTextSel(null) }, [cell])
+  const openText = (pi: number) => { setTextSel(pi); setSel(null); setTab('text') }
+  const textPi = isBook && cell === 0 ? -1 : textSel !== null && curPages.includes(textSel) ? textSel : (curPages[0] ?? 0)
   const selPhotoId = sel ? pages[sel.page]?.slots[sel.slot]?.photo_id : (cell === 0 && isBook ? layout?.cover?.photo_id : null)
   const selPhoto = selPhotoId ? photos[selPhotoId] : null
   const slotAspect = () => { if (!sel) return aspect; const t = TEMPLATES[pages[sel.page].template]; const b = t.slots[Math.min(sel.slot, t.slots.length - 1)]; return b ? +(b[2] * aspect / b[3]).toFixed(3) : aspect }
@@ -271,10 +299,13 @@ export default function Editor() {
       setChat((c) => [...c.slice(0, -1), { me: false, text: plan.actions.length ? 'Готово! Если не понравится — «Отменить».' : plan.reply }])
     } catch (e) { setChat((c) => [...c.slice(0, -1), { me: false, text: errorText(e) }]) }
   }
-  const voice = () => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SR) { toast({ title: 'Браузер не поддерживает голосовой ввод' }); return }
-    const r = new SR(); r.lang = 'ru-RU'; r.onresult = (e: any) => ask(e.results[0][0].transcript); r.onend = () => setListening(false); setListening(true); r.start()
+  // голос: текст появляется в поле по мере речи; после остановки ничего не отправляется — человек читает и жмёт «Отправить»
+  const mic = useVoice((t) => setText([voiceBase.current, t].filter(Boolean).join(' ')),
+    (msg) => toast({ title: msg, kind: 'bad', mascot: 'robot' }))
+  useEffect(() => { if (!catOpen && mic.active) mic.stop() }, [catOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+  const toggleMic = () => {
+    if (mic.active) { mic.stop(); setTimeout(() => textInput.current?.focus(), 50); return }
+    voiceBase.current = text.trim(); mic.start()
   }
   const uploadMore = async (files: File[]) => {
     if (!files.length) return
@@ -291,9 +322,10 @@ export default function Editor() {
     if (pis[0] === -1) {
       const cp = layout.cover?.photo_id ? photos[layout.cover.photo_id] : null
       return (
-        <button onClick={() => { if (canEdit) { setSel(null); setReplaceOpen(true) } }} style={{ border: 0, background: 'none', padding: 0, cursor: 'pointer' }} aria-label="Обложка — сменить фото">
-          {cp ? <CoverView design={design} photo={media(`/api/media/${cp.id}?size=preview`)} title={title} aspect={aspect} size={Math.min(320, window.innerWidth * 0.72)} /> : <div className="card center" style={{ width: 220, height: 220 }}>Выберите обложку</div>}
-        </button>
+        <div role="button" tabIndex={0} onClick={() => { if (canEdit && tab !== 'text') { setSel(null); setReplaceOpen(true) } }} style={{ cursor: canEdit ? 'pointer' : undefined }} aria-label="Обложка — сменить фото">
+          {cp ? <CoverView design={design} photo={media(`/api/media/${cp.id}?size=preview`)} title={title} aspect={aspect} size={Math.min(320, window.innerWidth * 0.72)}
+            titleStyle={layout.title_style} titleEditing={canEdit && tab === 'text'} onTitleClick={canEdit ? () => { setSel(null); setTab('text') } : undefined} onTitle={(t) => editTitle(t)} /> : <div className="card center" style={{ width: 220, height: 220 }}>Выберите обложку</div>}
+        </div>
       )
     }
     if (isSingle) {
@@ -309,7 +341,8 @@ export default function Editor() {
     return (
       <div className={pis.length > 1 ? 'spread' : ''} style={{ width: '100%', maxWidth: pis.length > 1 ? 560 : aspect < 1 ? 300 : 420, boxShadow: pis.length > 1 ? undefined : '0 20px 44px rgba(0,0,0,.22)', borderRadius: 4, overflow: 'hidden' }}>
         {pis.map((pi) => <PageView key={pages[pi].id} page={pages[pi]} photos={photos} aspect={aspect} design={design} issues={issues[pi]} filters={fx}
-          selected={sel?.page === pi ? sel.slot : null} onSlot={canEdit ? (si) => setSel({ page: pi, slot: si }) : undefined} />)}
+          selected={sel?.page === pi ? sel.slot : null} onSlot={canEdit ? (si) => { setSel({ page: pi, slot: si }); if (tab === 'text') setTab('crop') } : undefined}
+          textEditing={canEdit && tab === 'text' && textPi === pi} onText={canEdit ? () => openText(pi) : undefined} onCaption={(t) => editPageText(pi, { caption: t })} />)}
         {isBook && pis.length === 1 && <div className="bookpage" style={{ aspectRatio: String(aspect), background: design?.page || '#fff' }} />}
       </div>
     )
@@ -414,8 +447,66 @@ export default function Editor() {
               ) : <div className="muted t-sm" style={{ padding: 20 }}>Нажмите на фото на странице</div>}
             </div>
           )}
+          {tab === 'text' && (() => {
+            const isCover = textPi < 0
+            const pg = isCover ? undefined : pages[textPi]
+            const ts: TextStyle = (isCover ? layout.title_style : pg?.text) || {}
+            const val = isCover ? title : pg?.caption || ''
+            const setVal = (v: string) => (isCover ? editTitle(v) : editPageText(textPi, { caption: v }))
+            const setSt = (st: TextStyle) => (isCover ? editTitle(undefined, st) : editPageText(textPi, { text: st }))
+            const font = ts.font || design?.font || 'sans'
+            if (!isCover && !pg) return <div className="muted t-sm" style={{ padding: 20 }}>Добавьте страницу, чтобы написать текст</div>
+            return (
+              <div className="text-panel">
+                <div className="row" style={{ gap: 8, alignItems: 'stretch' }}>
+                  {!isCover && curPages.length > 1 && (
+                    <div className="seg seg-v">{curPages.map((p, i) => <button key={p} className={p === textPi ? 'active' : ''} onClick={() => setTextSel(p)}>{i ? 'Справа' : 'Слева'}</button>)}</div>
+                  )}
+                  <textarea className="input text-input" rows={1} value={val} maxLength={isCover ? 120 : 300} onChange={(e) => setVal(e.target.value)}
+                    placeholder={isCover ? 'Название на обложке' : 'Текст на странице — или нажмите на текст прямо в книге'} aria-label={isCover ? 'Название на обложке' : 'Текст страницы'} />
+                </div>
+                <div className="strip tight" aria-label="Готовые фразы">
+                  {TEXT_PRESETS.map((t) => <button key={t} className="chip" onClick={() => setVal(t)}>{t}</button>)}
+                  <button className="chip" onClick={() => setVal(new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }))}>Сегодняшняя дата</button>
+                </div>
+                <div className="strip tight" aria-label="Стили текста">
+                  {TEXT_STYLES.filter((x) => !isCover || x.id !== 'photo').map((x) => (
+                    <button key={x.id} className="txt-style" onClick={() => setSt(x.st)} style={{ fontFamily: FONT[x.st.font || 'sans'], textTransform: x.st.upper ? 'uppercase' : undefined, letterSpacing: x.st.upper ? '.08em' : undefined }}>{x.label}</button>
+                  ))}
+                </div>
+                <div className="strip tight" aria-label="Шрифт">
+                  {FONT_LIST.map((f) => (
+                    <button key={f.id} className={'font-chip' + (font === f.id ? ' on' : '')} onClick={() => setSt({ font: f.id })} aria-pressed={font === f.id}>
+                      <b style={{ fontFamily: FONT[f.id], fontWeight: f.id === 'script' || f.id === 'hand' ? 400 : 700 }}>Аа</b>{f.label}</button>
+                  ))}
+                </div>
+                <div className="row wrap" style={{ gap: 10 }}>
+                  <label className="row t-xs muted" style={{ gap: 6, flex: '1 1 140px' }}>Размер
+                    <input type="range" min={0.6} max={2} step={0.05} value={ts.size || 1} onChange={(e) => setSt({ size: +e.target.value })} aria-label="Размер текста" style={{ flex: 1 }} /></label>
+                  <div className="seg seg-icons" role="group" aria-label="Выравнивание">
+                    {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([a, I]) => (
+                      <button key={a} className={(ts.align || 'center') === a ? 'active' : ''} onClick={() => setSt({ align: a })} aria-label={a === 'left' ? 'По левому краю' : a === 'center' ? 'По центру' : 'По правому краю'}><I size={16} /></button>
+                    ))}
+                    <button className={ts.upper ? 'active' : ''} onClick={() => setSt({ upper: !ts.upper })} aria-pressed={!!ts.upper} aria-label="Заглавные буквы"><CaseUpper size={17} /></button>
+                  </div>
+                  {!isCover && (
+                    <div className="seg seg-icons" role="group" aria-label="Положение текста">
+                      {([['top', 'Сверху'], ['middle', 'Центр'], ['bottom', 'Снизу']] as const).map(([p, l]) => (
+                        <button key={p} className={(ts.pos || 'bottom') === p ? 'active' : ''} onClick={() => setSt({ pos: p })}>{l}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="row" style={{ gap: 8 }} role="group" aria-label="Цвет текста">
+                  <button className={'swatch auto' + (!ts.color ? ' on' : '')} onClick={() => setSt({ color: undefined })} aria-label="Цвет из дизайна" title="Как в дизайне">A</button>
+                  {TEXT_COLORS.map((c) => <button key={c} className={'swatch' + (ts.color === c ? ' on' : '')} style={{ background: c }} onClick={() => setSt({ color: c })} aria-label={'Цвет ' + c} />)}
+                  {!isCover && val && <button className="chip" style={{ marginLeft: 'auto' }} onClick={() => setVal('')}><Trash2 size={14} /> Убрать текст</button>}
+                </div>
+              </div>
+            )
+          })()}
           <nav className="tabs" aria-label="Режимы редактора">
-            {([['layout', 'Макет', LayoutTemplate], ['filters', 'Фильтры', Palette], ['enhance', 'Улучшить', Wand2], ['crop', 'Кадр', Crop]] as const).map(([k, l, I]) => (
+            {(([['layout', 'Макет', LayoutTemplate], ['text', 'Текст', Type], ['filters', 'Фильтры', Palette], ['enhance', 'Улучшить', Wand2], ['crop', 'Кадр', Crop]] as const).filter(([k]) => !(isSingle && k === 'text'))).map(([k, l, I]) => (
               <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)} aria-pressed={tab === k}><I size={22} />{l}</button>
             ))}
           </nav>
@@ -448,11 +539,19 @@ export default function Editor() {
             {chat.map((m, i) => <div key={i} className="bubble" style={m.me ? { alignSelf: 'flex-end', background: 'var(--primary)', color: 'var(--primary-ink)', borderRadius: '20px 20px 6px 20px' } : { alignSelf: 'flex-start' }}>{m.wait && <Loader2 size={13} className="spin" style={{ marginRight: 6, verticalAlign: -2 }} />}{m.text}</div>)}
           </div>}
           <div className="row wrap" style={{ gap: 6 }}>{SUGGEST.map((s) => <button key={s} className="chip" onClick={() => ask(s)}>{s}</button>)}</div>
-          <form className="row" onSubmit={(e) => { e.preventDefault(); ask(text) }}>
-            <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Например: сделай фото ярче" aria-label="Команда Коту" />
-            <button type="button" className="icon-btn plain" style={listening ? { background: 'var(--primary)', color: 'var(--primary-ink)' } : {}} onClick={voice} aria-label="Сказать голосом"><Mic size={18} /></button>
-            <button className="icon-btn" style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }} aria-label="Отправить"><Send size={17} /></button>
+          <form className="row chat-form" onSubmit={(e) => { e.preventDefault(); if (mic.active) mic.stop(); if (text.trim()) { ask(text); setText('') } }}>
+            <div className={`voice-field ${mic.active ? 'on' : ''}`}>
+              <textarea ref={textInput} className="input chat-input" rows={1} value={text} onChange={(e) => setText(e.target.value)} readOnly={mic.state === 'listening'}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit() } }}
+                placeholder={mic.state === 'starting' ? 'Включаю микрофон…' : mic.active ? 'Говорите — текст появится здесь…' : 'Например: сделай фото ярче'} aria-label="Команда Коту" />
+              {mic.active && <span className="voice-level" aria-hidden><i style={{ transform: `scaleY(${0.25 + mic.level * 0.9})` }} /><i style={{ transform: `scaleY(${0.2 + mic.level * 1.2})` }} /><i style={{ transform: `scaleY(${0.25 + mic.level * 0.8})` }} /></span>}
+            </div>
+            <button type="button" className={`icon-btn plain mic-btn ${mic.active ? 'on' : ''}`} onClick={toggleMic} aria-pressed={mic.active}
+              aria-label={mic.active ? 'Остановить запись' : 'Сказать голосом'} title={mic.active ? 'Остановить — текст останется в поле' : 'Сказать голосом'}>
+              {mic.active ? <Square size={16} fill="currentColor" /> : <Mic size={18} />}</button>
+            <button className="icon-btn" style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }} aria-label="Отправить" disabled={!text.trim() || mic.state === 'finishing'}><Send size={17} /></button>
           </form>
+          {mic.active && <div className="t-xs muted" role="status">{mic.state === 'finishing' ? 'Дораспознаю…' : mic.engine === 'server' ? 'Слушаю · распознаёт наш сервер (Vosk), без облака. Нажмите ■, проверьте текст и отправьте.' : 'Слушаю… Нажмите ■, проверьте текст и отправьте.'}</div>}
         </div>
       </Sheet>
 

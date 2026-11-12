@@ -741,7 +741,7 @@
       "id": "mug",
       "category": "gifts",
       "title": "Кружка с фото",
-      "subtitle": "Керамика 330 мл, цветная ручка",
+      "subtitle": "Керамика 330 мл, 6 цветов",
       "kind": "single",
       "mockup": "mug",
       "base_price_minor": 1900,
@@ -782,31 +782,31 @@
           },
           {
             "id": "pink",
-            "label": "Розовая внутри",
+            "label": "Розовая",
             "hex": "#F48FB1",
             "add_minor": 300
           },
           {
             "id": "yellow",
-            "label": "Жёлтая внутри",
+            "label": "Жёлтая",
             "hex": "#FFD43B",
             "add_minor": 300
           },
           {
             "id": "sky",
-            "label": "Голубая внутри",
+            "label": "Голубая",
             "hex": "#74C0FC",
             "add_minor": 300
           },
           {
             "id": "mint",
-            "label": "Мятная внутри",
+            "label": "Мятная",
             "hex": "#8CE99A",
             "add_minor": 300
           },
           {
             "id": "black",
-            "label": "Чёрная внутри",
+            "label": "Чёрная",
             "hex": "#212529",
             "add_minor": 300
           }

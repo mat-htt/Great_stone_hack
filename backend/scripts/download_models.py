@@ -3,6 +3,7 @@
   YuNet (OpenCV Zoo, MIT)            — детектор лиц с ключевыми точками        ~0.2 МБ
   FSRCNN x2/x4 (Saafke, MIT)         — нейросетевое увеличение разрешения        ~0.04 МБ
   U²-Net-p (xuebinqin/rembg, Apache) — сегментация объекта / удаление фона     ~4.6 МБ
+  Vosk small-ru 0.22 (Alpha Cephei, Apache) — распознавание русской речи офлайн ~45 МБ
 
 Запуск: python scripts/download_models.py [папка]
 """
@@ -10,6 +11,7 @@ from __future__ import annotations
 
 import sys
 import urllib.request
+import zipfile
 from pathlib import Path
 
 MODELS = {
@@ -38,6 +40,24 @@ def main(target: str) -> None:
                 print(f"retry {name}: {e}")
         else:
             print(f"FAIL {name} — встроенный движок использует классический фолбэк")
+
+    vosk_dir = out / "vosk-model-small-ru-0.22"
+    if (vosk_dir / "am").exists():
+        print("ok   vosk-model-small-ru-0.22")
+        return
+    zpath = out / "vosk-ru.zip"
+    for attempt in range(4):
+        try:
+            urllib.request.urlretrieve("https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.zip", zpath)
+            with zipfile.ZipFile(zpath) as z:
+                z.extractall(out)
+            zpath.unlink(missing_ok=True)
+            print("got  vosk-model-small-ru-0.22")
+            break
+        except Exception as e:  # pragma: no cover
+            print(f"retry vosk: {e}")
+    else:
+        print("FAIL vosk — голосовой ввод использует распознавание браузера")
 
 
 if __name__ == "__main__":

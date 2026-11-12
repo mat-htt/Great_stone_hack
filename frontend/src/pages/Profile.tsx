@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Bell, ChevronRight, Images, LayoutDashboard, LogOut, Send, Trash2, UserPlus } from 'lucide-react'
 import { api, type Photo } from '../api'
-import { Avatar, Logo } from '../components/Mascots'
+import { Avatar, Logo, Mascot } from '../components/Mascots'
 import { Dock, Sheet } from '../components/ui'
 import TelegramSheet, { useTelegram } from '../components/Telegram'
 import { activeTheme, chooseTheme, getThemes, onThemeChange, type Theme } from '../theme/theme'
@@ -40,8 +40,9 @@ export default function Profile() {
           <div className="grow"><h1 className="t-h1 ellipsis">{user?.name}</h1><div className="t-sm muted">{user?.is_guest ? 'Гость' : user?.email}</div></div>
         </div>
         {user?.is_guest && (
-          <button className="card row grad-accent" style={{ width: '100%', border: 0, marginTop: 18, cursor: 'pointer', textAlign: 'left' }} onClick={() => setReg(true)}>
-            <UserPlus size={22} /><div className="grow"><b>Сохранить аккаунт</b><div className="t-sm" style={{ opacity: .8 }}>Проекты и заказы останутся с вами</div></div><ChevronRight size={18} />
+          <button className="card row grad-accent save-banner" style={{ width: '100%', border: 0, marginTop: 18, cursor: 'pointer', textAlign: 'left' }} onClick={() => setReg(true)}>
+            <UserPlus size={22} /><div className="grow"><b>Сохранить аккаунт</b><div className="t-sm" style={{ opacity: .8 }}>Проекты и заказы останутся с вами</div></div>
+            <span className="tile-art" aria-hidden><Mascot pose="cat-point" size={92} /></span><ChevronRight size={18} className="chev" />
           </button>
         )}
 

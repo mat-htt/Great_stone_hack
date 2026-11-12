@@ -68,7 +68,9 @@ a { color: inherit; text-decoration: none; }
 .muted { color: var(--muted); }
 .num { font-variant-numeric: tabular-nums; }
 .hand { font-family: var(--hand); }
-.logo { font-family: var(--logo); color: var(--primary); line-height: 1; letter-spacing: -.01em; white-space: nowrap; }
+.logo { font-family: var(--logo); color: var(--primary); line-height: 1; letter-spacing: -.01em; white-space: nowrap;
+  /* чёрный контур: логотип читается на любом фоне и в любой теме */
+  -webkit-text-stroke: .085em #161616; paint-order: stroke fill; text-shadow: 0 .05em 0 #161616; padding: 0 .06em; }
 
 /* ---------- Каркас ---------- */
 .app-shell { min-height: 100%; display: flex; justify-content: center; }
@@ -460,3 +462,51 @@ table.t tbody tr:hover td { background: var(--fill); }
 .cover-view::after { content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none;
   background: linear-gradient(115deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 38%, rgba(255,255,255,0) 70%, rgba(255,255,255,.08) 100%); }
 .cover-view .dc-title { z-index: 2; }
+
+/* ---------- Текст на страницах (редактируется прямо в книге) ---------- */
+.etext { outline: none; min-height: 1em; border-radius: 4px; transition: box-shadow .15s; }
+.etext.can { cursor: text; }
+.etext.can:hover { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--primary) 55%, transparent); }
+.etext.editing { box-shadow: 0 0 0 2px var(--primary), 0 0 0 5px color-mix(in srgb, var(--primary) 22%, transparent); background: color-mix(in srgb, #fff 18%, transparent); caret-color: var(--primary); }
+.etext:empty::before { content: attr(data-placeholder); opacity: .45; font-style: italic; }
+.cap-box { position: absolute; z-index: 3; display: flex; flex-direction: column; pointer-events: none; }
+.cap-box > * { pointer-events: auto; }
+.cap-box.area { left: 7%; right: 7%; top: 76%; bottom: 3%; justify-content: center; }
+.cap-box.over { left: 6%; right: 6%; top: 6%; bottom: 6%; }
+.dc-title { overflow: visible; }
+
+.text-panel { display: flex; flex-direction: column; gap: 9px; padding: 10px 14px 8px; max-height: min(330px, 42dvh); overflow-y: auto; overscroll-behavior: contain; }
+textarea.input.text-input { resize: none; height: 46px; min-height: 46px; flex: 1; font-size: 15px; line-height: 1.3; padding: 11px 12px; }
+.strip.tight { padding: 0; gap: 6px; min-height: 0; align-items: stretch; flex-shrink: 0; }
+.txt-style { flex-shrink: 0; border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 12px; padding: 8px 12px; font-size: 15px; cursor: pointer; white-space: nowrap; }
+.txt-style:hover { border-color: var(--primary); }
+.font-chip { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 76px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 12px; padding: 6px 8px; font-size: 11px; cursor: pointer; }
+.font-chip b { font-size: 21px; line-height: 1.1; color: var(--text); }
+.font-chip.on { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent); color: var(--text); }
+.seg-icons { flex-shrink: 0; }
+.seg-icons button { min-width: 38px; padding-inline: 8px; display: grid; place-items: center; font-size: 12px; }
+.seg-v { flex-direction: column; flex-shrink: 0; }
+.seg-v button { flex: 1; font-size: 12px; padding: 4px 10px; }
+.swatch { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; border: 0; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+.swatch.on { box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 0 2px var(--surface), 0 0 0 4px var(--primary); }
+.swatch.auto { background: var(--fill); color: var(--text); font-weight: 700; font-size: 13px; }
+
+/* ---------- Голосовой ввод ---------- */
+.voice-field { position: relative; flex: 1; min-width: 0; }
+.voice-field .input { width: 100%; }
+.voice-field.on .input { padding-right: 46px; box-shadow: 0 0 0 2px var(--primary); }
+.voice-level { position: absolute; right: 12px; top: 50%; translate: 0 -50%; display: flex; gap: 3px; align-items: center; height: 20px; }
+.voice-level i { width: 4px; height: 18px; border-radius: 3px; background: var(--primary); transform-origin: center; transition: transform .09s linear; }
+.mic-btn.on { background: var(--danger, #E5484D); color: #fff; animation: micPulse 1.4s ease-out infinite; }
+@keyframes micPulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger, #E5484D) 55%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
+
+/* ---------- Проверка Робота: по центру экрана ---------- */
+.check-center { min-height: calc(100dvh - 220px); }
+
+/* ---------- Баннер «Сохранить аккаунт» как «Скинемся на альбом» ---------- */
+.save-banner { position: relative; overflow: hidden; min-height: 78px; padding-right: 108px !important; }
+.save-banner .grow, .save-banner svg { position: relative; z-index: 2; }
+.save-banner .tile-art { position: absolute; right: 26px; bottom: -14px; z-index: 1; pointer-events: none; }
+.save-banner .chev { position: absolute; right: 12px; top: 50%; translate: 0 -50%; z-index: 2; }
+textarea.input.chat-input { min-height: 48px; height: 48px; max-height: 112px; resize: none; padding: 13px 14px; line-height: 1.35; overflow-y: auto; display: block; }
+.chat-form { align-items: flex-end; }

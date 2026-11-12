@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import re
 
 import secrets
 from typing import Any, Optional
@@ -160,7 +161,36 @@ def _validate_layout(layout: dict[str, Any]) -> dict[str, Any]:
             raise ApiError(422, "bad_layout", f"Неизвестный шаблон страницы: {pg.get('template')}")
         if not isinstance(pg.get("slots"), list):
             raise ApiError(422, "bad_layout", "Некорректный макет")
+        if "caption" in pg:
+            pg["caption"] = str(pg["caption"] or "")[:300]
+        if "text" in pg:
+            pg["text"] = _text_style(pg["text"])
+    if "title_style" in layout:
+        layout["title_style"] = _text_style(layout["title_style"])
     return layout
+
+
+_FONTS = {"sans", "serif", "hand", "script", "display"}
+
+
+def _text_style(st: Any) -> dict[str, Any]:
+    """Оформление текста: только известные поля и допустимые значения."""
+    if not isinstance(st, dict):
+        return {}
+    out: dict[str, Any] = {}
+    if st.get("font") in _FONTS:
+        out["font"] = st["font"]
+    if isinstance(st.get("size"), (int, float)):
+        out["size"] = max(0.5, min(2.5, float(st["size"])))
+    if isinstance(st.get("color"), str) and re.fullmatch(r"#[0-9A-Fa-f]{6}", st["color"]):
+        out["color"] = st["color"]
+    if st.get("align") in {"left", "center", "right"}:
+        out["align"] = st["align"]
+    if st.get("pos") in {"top", "middle", "bottom"}:
+        out["pos"] = st["pos"]
+    if isinstance(st.get("upper"), bool):
+        out["upper"] = st["upper"]
+    return out
 
 
 @router.put("/projects/{project_id}")

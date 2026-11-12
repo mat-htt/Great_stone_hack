@@ -50,13 +50,13 @@ export default function Check() {
       <main className="content no-dock">
         <AnimatePresence mode="wait">
           {scan || !pf ? (
-            <motion.div key="s" exit={{ opacity: 0 }} className="stack" style={{ alignItems: 'center', textAlign: 'center', paddingTop: 24, gap: 14 }}>
+            <motion.div key="s" exit={{ opacity: 0 }} className="stack check-center" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 14 }}>
               <div className="scan" style={{ borderRadius: 40, padding: 10 }}><Mascot pose="robot-book" size={200} /></div>
               <h2 className="t-h2">Робот проверяет каждую страницу</h2>
               <div className="t-sm muted">Разрешение для печати, резкость, лица на краю кадра, пустые рамки</div>
             </motion.div>
           ) : (
-            <motion.div key="r" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="stack" style={{ gap: 14 }}>
+            <motion.div key="r" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={'stack' + (list.length ? '' : ' check-center')} style={{ gap: 14, justifyContent: list.length ? undefined : 'center' }}>
               <div className="card row" style={{ gap: 14 }}>
                 <Avatar who="robot" size={56} />
                 <div className="grow">

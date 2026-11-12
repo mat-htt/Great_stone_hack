@@ -15,7 +15,7 @@ from . import errors, simulator
 from . import telegram as tg_bot
 from .config import CORS_ORIGINS, SEED_ON_START
 from .db import Base, engine
-from .routers import admin, ai, auth, catalog, dbadmin, misc, orders, photos, pipeline, projects, telegram, themes
+from .routers import admin, ai, auth, catalog, dbadmin, misc, orders, photos, pipeline, projects, telegram, themes, voice
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -41,7 +41,7 @@ app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["*
                    expose_headers=["X-AI-Provider", "X-AI-Status", "X-AI-Duration"])
 
 for r in (auth.router, catalog.router, photos.router, projects.router, orders.router, ai.router, admin.router,
-          themes.router, pipeline.router, dbadmin.router, telegram.router,
+          themes.router, pipeline.router, dbadmin.router, telegram.router, voice.router,
           misc.router):
     app.include_router(r)
 
