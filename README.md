@@ -1,3 +1,32 @@
+# picPac — photo products app for a print studio
+
+**Great Stone hackathon (Velikiy Kamen), track 2, case from Fotoprint / picPac.by.** A mobile app (PWA) for ordering photo prints, photo books, graduation albums, cards, calendars and mugs, plus the **Studio** admin panel with analytics, a photo pipeline and an AI gateway.
+
+The idea: picPac is a director, not an editor. **The Cat** (creative director) picks the best shots and builds the layout by itself, **the Robot** (quality control) checks every page before printing. All advice is optional — the order is blocked only by an empty frame.
+
+<table>
+<tr>
+<td width="34%" valign="top" align="center"><img src="docs/demo.gif" alt="picPac: catalog, 3D photo book, picking photos, auto layout, editor, pre-print check" width="280"></td>
+<td valign="top">
+<p><b>In the demo:</b> catalog → photo book with a 3D preview → pick photos → the Cat builds the book in 0.1 s → editor → the Robot's pre-print check with optional fixes.</p>
+<ul>
+<li><b>Backend:</b> FastAPI, SQLAlchemy, JWT auth with client / manager / admin roles, idempotent orders, offline autosave with versions</li>
+<li><b>Image AI on CPU:</b> YuNet face detection ("faces must not fall under the trim"), FSRCNN ×2/×4 upscaling, U²-Net background removal, duplicate and blur detection, auto layout</li>
+<li><b>LLM assistant:</b> Qwen3 through Ollama or any OpenAI-compatible API, with a built-in fallback so the app keeps working</li>
+<li><b>Voice commands</b> over WebSocket (Vosk), Telegram order status bot</li>
+<li><b>Frontend:</b> React, TypeScript, Vite, three.js 3D book preview, configurable themes</li>
+<li>Everything runs with <code>docker compose up</code></li>
+</ul>
+</td>
+</tr>
+</table>
+
+**Studio** — KPI dashboard with formulas, production forecast vs capacity, photo pipeline, orders, support with AI drafts, AI gateway, themes, Django-style database admin and audit log.
+
+<img src="docs/studio.jpg" alt="Studio dashboard: revenue, orders, margin, defects, SLA, funnel" width="100%">
+
+---
+
 # picPac — фото на бумаге, кружках и в книгах
 
 **Трек 2 хакатона «Великий камень» · ООО «Фотопринт».** Мобильное приложение picPac.by (PWA → Android/iOS) для фотоцентра:
